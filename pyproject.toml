@@ -14,7 +14,33 @@ librosa = "^0.10.2.post1"
 [tool.poetry.group.dev.dependencies]
 matplotlib = "^3.9.2"
 pytest = "^8.3.3"
+flake8 = "^7.1.1"
+pytest-mock = "^3.14.0"
+pytest-cov = "^6.0.0"
+flake8-pyproject = "^1.2.3"
+bandit = "^1.7.10"
+flake8-import-order = "^0.18.2"
+sphinx = "^8.1.3"
+sphinx-rtd-theme = "^3.0.1"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.flake8]
+max-line-length = 120
+count = true
+per-file-ignores = [
+    "__init__.py:F401",
+]
+import-order-style = "pycharm"
+
+[tool.mypy]
+files = "src"
+disable_error_code = "import-untyped"
+
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    "docs"
+]
