@@ -43,11 +43,10 @@ def parse_args():
     return args
 
 
-
 def main():
     args = parse_args()
     logger.info(f"Encoding file '{args.filename}'")
-    encode_signal(args.filename)
+    encode_signal(args.filename, window_size=256, overlap=0)
 
 
 if __name__ == '__main__':

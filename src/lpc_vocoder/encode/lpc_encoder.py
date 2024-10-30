@@ -20,6 +20,7 @@
 
 
 import logging
+from pathlib import Path
 from typing import Tuple
 
 import librosa
@@ -70,22 +71,21 @@ def _process_frame(frame: np.array, sample_rate: float, order: int) -> Tuple[flo
     return pitch, gain, lpc_coefficients
 
 
-def encode_signal(filename):
-    sr = librosa.get_samplerate(filename)
+def encode_signal(filename: Path, window_size: int = None, overlap: int = 50, order: int = 10):
+    sr = librosa.get_samplerate(str(filename))
     logger.debug(f"Sampling rate: {sr}")
 
-    window = librosa.filters.get_window('hamming', 256)
+    if not window_size:
+        window_size = int(sr * 0.03)  # use a 30ms window
 
-    frames = librosa.stream(filename,
-                            block_length=1,
-                            frame_length=256,
-                            hop_length=256,
-                            mono=False
-                            )
+    overlap = window_size - int(overlap/100 * window_size)
+
+    # window = librosa.filters.get_window('hamming', window_size)
+
+    frames = librosa.stream(str(filename), block_length=1, frame_length=window_size, hop_length=overlap, mono=False)
 
     with open("file.txt", "w") as f:
         f.write(f"{256}, {sr}, {0}, {10}\n")
-
         for frame in frames:
             pitch, gain, a = _process_frame(frame, sr, 10)
             f.write(f"{pitch}, {gain}, {a.tobytes().hex()}\n")
