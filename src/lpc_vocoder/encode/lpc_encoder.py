@@ -18,15 +18,13 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-import argparse
+
 import logging
-import random
-from datetime import datetime
-from pathlib import Path
 
 
 import librosa
 import numpy as np
+import scipy
 
 from lpc_vocoder.encode.pitch_estimation import pitch_estimator
 
@@ -36,33 +34,21 @@ logger = logging.getLogger(__name__)
 # frame size, sample rate, overlap, order, pitch, gain, data, pitch, gain, data
 # if pitch == 0, then use noise as input
 
+def preephasis(signal: np.ndarray) -> np.ndarray:
+    return scipy.signal.lfilter([1, 0.9375], [1], signal)
+
+
 def get_gain(frame: np.array, coefficients: np.array) -> float:
     rxx = librosa.autocorrelate(frame)
-    G = np.sqrt(rxx[0] - np.dot(coefficients[1:], rxx[1:len(coefficients)]))
-    return G
+    gain = np.sqrt(rxx[0] - np.dot(coefficients[1:], rxx[1:len(coefficients)]))
+    return gain
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.description = "Encode a .wav signal using LPC"
-    parser.add_argument("filename", type=Path, help="Name of the output file")
-    # TODO add the following arguments, order, frame size, overlap percentage
-    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug messages")
-    args = parser.parse_args()
-
-    logging.basicConfig(handlers=[logging.StreamHandler()],
-                        format="%(asctime)s [%(levelname)s] %(message)s",
-                        level=logging.DEBUG if args.debug else logging.INFO)
-
-    return args
-
-def main():
-    args = parse_args()
-    random.seed(datetime.now().timestamp())
-    sr = librosa.get_samplerate(args.filename)
+def encode_signal(filename):
+    sr = librosa.get_samplerate(filename)
     logger.debug(f"Sampling rate: {sr}")
 
-    frames = librosa.stream(args.filename,
+    frames = librosa.stream(filename,
                             block_length=1,
                             frame_length=256,
                             hop_length=256,
@@ -73,13 +59,9 @@ def main():
 
         for frame in frames:
             pitch = pitch_estimator(frame, sr)
-
+            signal = preephasis(frame)
             logger.debug(f"Pitch: {pitch}")
-            a = librosa.lpc(frame, order=10)
-            gain = get_gain(frame, a)
+            a = librosa.lpc(signal, order=10)
+            gain = get_gain(signal, a)
             logger.debug(f"Gain {gain}")
-            # f.write(f"{pitch}, {gain}, {str(a).replace('\n', '')}\n")
             f.write(f"{pitch}, {gain}, {a.tobytes().hex()}\n")
-
-if __name__ == '__main__':
-    main()
