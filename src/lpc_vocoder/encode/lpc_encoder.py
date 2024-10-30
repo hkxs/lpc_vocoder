@@ -20,9 +20,10 @@
 
 
 import logging
-
+from typing import Tuple
 
 import librosa
+import librosa.feature
 import numpy as np
 import scipy
 
@@ -40,13 +41,40 @@ def preephasis(signal: np.ndarray) -> np.ndarray:
 
 def get_gain(frame: np.array, coefficients: np.array) -> float:
     rxx = librosa.autocorrelate(frame)
-    gain = np.sqrt(rxx[0] - np.dot(coefficients[1:], rxx[1:len(coefficients)]))
-    return gain
+    return np.sqrt(np.dot(coefficients, rxx[:len(coefficients)]))
+
+
+def _is_silence(signal: np.array) -> bool:
+    """
+    Check if the signal is silence, it uses -60dB as threshold, this is based on
+    librosa.effects._signal_to_frame_nonsilent
+    """
+    rms = librosa.feature.rms(y=signal, frame_length=256, hop_length=256)
+    power = librosa.core.amplitude_to_db(rms[..., 0, :], ref=np.max, top_db=None)
+    is_silence = np.flatnonzero(power < -60)
+    return is_silence.size > 0
+
+
+def _process_frame(frame: np.array, sample_rate: float, order: int) -> Tuple[float, float, np.ndarray]:
+    if _is_silence(frame):
+        logger.debug("Silence found")
+        lpc_coefficients = np.array([1] * 10)
+        gain = 0
+        pitch = 0
+    else:
+        pitch = pitch_estimator(frame, sample_rate)
+        lpc_coefficients = librosa.lpc(frame, order=order)
+        gain = get_gain(frame, lpc_coefficients)
+    logger.debug(f"Pitch: {pitch}")
+    logger.debug(f"Gain {gain}")
+    return pitch, gain, lpc_coefficients
 
 
 def encode_signal(filename):
     sr = librosa.get_samplerate(filename)
     logger.debug(f"Sampling rate: {sr}")
+
+    window = librosa.filters.get_window('hamming', 256)
 
     frames = librosa.stream(filename,
                             block_length=1,
@@ -54,14 +82,10 @@ def encode_signal(filename):
                             hop_length=256,
                             mono=False
                             )
+
     with open("file.txt", "w") as f:
         f.write(f"{256}, {sr}, {0}, {10}\n")
 
         for frame in frames:
-            pitch = pitch_estimator(frame, sr)
-            signal = preephasis(frame)
-            logger.debug(f"Pitch: {pitch}")
-            a = librosa.lpc(signal, order=10)
-            gain = get_gain(signal, a)
-            logger.debug(f"Gain {gain}")
+            pitch, gain, a = _process_frame(frame, sr, 10)
             f.write(f"{pitch}, {gain}, {a.tobytes().hex()}\n")

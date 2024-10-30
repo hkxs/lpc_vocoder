@@ -23,6 +23,10 @@ import pyaudio
 
 import numpy as np
 
+
+def deephasis(signal: np.ndarray) -> np.ndarray:
+    return scipy.signal.lfilter([1], [1, -0.9375], signal)
+
 decoded = np.array([])
 with open("../encode/file.txt") as f:
     audio_data = f.readlines()
@@ -35,13 +39,18 @@ for audio in audio_data[1:]:
     pitch, gain, a = audio.split(",")
     pitch = float(pitch)
     gain = float(gain)
-    a = np.frombuffer(bytes.fromhex(a), dtype=np.float32)
-    if pitch == -1:
-        excitation = noise
+    if not gain:
+        reconstructed = np.array([0] * frame_size)
     else:
-        period = int(sr // int(pitch))
-        excitation = scipy.signal.unit_impulse(frame_size, range(0, frame_size, period))
+        a = np.frombuffer(bytes.fromhex(a), dtype=np.float32)
+        if pitch == -1:
+            excitation = noise
+        else:
+            period = int(sr // int(pitch))
+            excitation = scipy.signal.unit_impulse(frame_size, range(0, frame_size, period))
     reconstructed = scipy.signal.lfilter([gain], a, excitation)
+
+
     decoded = np.concatenate((decoded, reconstructed))
 
 p = pyaudio.PyAudio()
