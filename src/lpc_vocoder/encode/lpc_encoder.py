@@ -37,7 +37,7 @@ class LpcEncoder:
     def __init__(self, filename: Path, window_size: int = None, overlap: int = 50, order: int = 10):
         self.filename = filename
         self.order = order
-        self.lpc_coefficients = []
+        self.frame_data = []
         self.sample_rate = librosa.get_samplerate(str(self.filename))
         self.window_size = window_size if window_size else int(self.sample_rate * 0.03)  # use a 30ms window
         self.overlap = window_size - int(overlap / 100 * window_size)
@@ -54,7 +54,7 @@ class LpcEncoder:
         for frame in frames:
             pitch, gain, coefficients = self._process_frame(frame)
             frame_data = {"pictch": pitch, "gain": gain, "coefficients": coefficients}
-            self.lpc_coefficients.append(frame_data)
+            self.frame_data.append(frame_data)
 
     def save_data(self, filename: Path):
         # format
@@ -62,7 +62,7 @@ class LpcEncoder:
         # if pitch == 0, then use noise as input
         with open(filename, "w") as f:
             f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
-            for frame in self.lpc_coefficients:
+            for frame in self.frame_data:
                 f.write(f"{frame['pitch']}, {frame['gain']}, {frame['coefficients'].tobytes().hex()}\n")
 
     def _process_frame(self, frame: np.array) -> Tuple[float, float, np.ndarray]:

@@ -18,43 +18,44 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-import scipy
-import pyaudio
+from pathlib import Path
 
 import numpy as np
+import scipy
+
+from lpc_vocoder.utils.utils import gen_excitation
 
 
-def deephasis(signal: np.ndarray) -> np.ndarray:
-    return scipy.signal.lfilter([1], [1, -0.9375], signal)
+class LpcDecoder:
+    def __init__(self, filename: Path):
+        self.filename = filename
+        self.data = []
+        self.sample_rate = None
+        self.window_size = None
+        self.overlap = None
+        self.order = None
+        self.frame_data = []
+        self._audio_frames = []
+        self.signal = None
 
-decoded = np.array([])
-with open("../encode/file.txt") as f:
-    audio_data = f.readlines()
+    def _get_signal_data(self):
+        with open(self.filename) as f:
+            audio_data = f.readlines()
+        self.window_size, self.sample_rate, self.overlap, self.order = map(int, audio_data[0].split(","))
 
-audio_info = audio_data[0]
-frame_size, sr, overlap, order = map(int, audio_info.split(","))
-noise =  np.random.rand(frame_size)
+        for frame in audio_data[1:]:
+            pitch, gain, lpc_coefficients = frame.split(",")
+            frame_data = {"pictch": float(pitch), "gain": float(gain),
+                          "coefficients": np.frombuffer(bytes.fromhex(lpc_coefficients), dtype=np.float32)}
+            self.frame_data.append(frame_data)
 
-for audio in audio_data[1:]:
-    pitch, gain, a = audio.split(",")
-    pitch = float(pitch)
-    gain = float(gain)
-    if not gain:
-        reconstructed = np.array([0] * frame_size)
-    else:
-        a = np.frombuffer(bytes.fromhex(a), dtype=np.float32)
-        if pitch == -1:
-            excitation = noise
-        else:
-            period = int(sr // int(pitch))
-            excitation = scipy.signal.unit_impulse(frame_size, range(0, frame_size, period))
-    reconstructed = scipy.signal.lfilter([gain], a, excitation)
-
-
-    decoded = np.concatenate((decoded, reconstructed))
-
-p = pyaudio.PyAudio()
-stream = p.open(format=pyaudio.paFloat32, channels=1, rate=int(sr), output=True)
-stream.write(decoded.astype('float32').tobytes())
-stream.close()
-p.terminate()
+    def decode_signal(self):
+        self._audio_frames = []
+        for frame in self.frame_data:
+            if not frame["gain"]:
+                reconstructed = np.array([0] * self.window_size)  # just add silence
+            else:
+                excitation = gen_excitation(frame["pitch"], self.window_size, self.sample_rate)
+                reconstructed = scipy.signal.lfilter([frame["gain"]], frame["coefficients"], excitation)
+        self._audio_frames.append(reconstructed)
+        self.signal = np.concatenate(self._audio_frames)

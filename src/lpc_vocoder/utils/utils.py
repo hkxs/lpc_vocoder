@@ -28,6 +28,18 @@ def preephasis(signal: np.ndarray) -> np.ndarray:
     return scipy.signal.lfilter([1, 0.9375], [1], signal)
 
 
+def deephasis(signal: np.ndarray) -> np.ndarray:
+    return scipy.signal.lfilter([1], [1, -0.9375], signal)
+
+
+def gen_excitation(pitch: float, frame_size, sample_rate: int):
+    if pitch == -1:
+        excitation = np.random.rand(frame_size)
+    else:
+        period = int(sample_rate // int(pitch))
+        excitation = scipy.signal.unit_impulse(frame_size, range(0, frame_size, period))
+    return excitation
+
 def get_frame_gain(frame: np.array, coefficients: np.array) -> float:
     rxx = librosa.autocorrelate(frame, max_size=len(coefficients))
     g_squared = rxx[0] - np.dot(coefficients[1:], rxx[1:])
@@ -43,3 +55,12 @@ def is_silence(signal: np.array) -> bool:
     power = librosa.core.amplitude_to_db(rms[..., 0, :], ref=np.max, top_db=None)
     silence = np.flatnonzero(power < -60)
     return silence.size > 0
+
+def play_signal(signal: np.array, sample_rate: int):
+    import pyaudio  # lazy loader since we don't need it all the time
+
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paFloat32, channels=1, rate=sample_rate, output=True)
+    stream.write(signal.astype('float32').tobytes())
+    stream.close()
+    p.terminate()
