@@ -46,20 +46,19 @@ class LpcEncoder:
         logger.debug(f"Overlap: {self.overlap} samples")
 
 
-    def encode_signal(self):
+    def encode_signal(self) -> None:
         # window = librosa.filters.get_window('hamming', window_size)
         frames = librosa.stream(str(self.filename), block_length=1, frame_length=self.window_size,
                                 hop_length=self.overlap, mono=False, dtype=np.float64)
 
         for frame in frames:
             pitch, gain, coefficients = self._process_frame(frame)
-            frame_data = {"pictch": pitch, "gain": gain, "coefficients": coefficients}
+            frame_data = {"pitch": pitch, "gain": gain, "coefficients": coefficients}
             self.frame_data.append(frame_data)
 
-    def save_data(self, filename: Path):
+    def save_data(self, filename: Path) -> None:
         # format
         # frame size, sample rate, overlap, order, pitch, gain, data, pitch, gain, data
-        # if pitch == 0, then use noise as input
         with open(filename, "w") as f:
             f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
             for frame in self.frame_data:

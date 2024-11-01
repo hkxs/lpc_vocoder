@@ -20,11 +20,20 @@
 
 from pathlib import Path
 
-from lpc_vocoder.encode.lpc_encoder import LpcEncoder
+import matplotlib.pyplot as plt
 
+from lpc_vocoder.decode.lpc_decoder import LpcDecoder
+from lpc_vocoder.encode.lpc_encoder import LpcEncoder
+from lpc_vocoder.utils.utils import play_signal
 
 def test_vocoder():
     sound_file = Path(__file__).parent / "audios" / "sine_24hz.wav"
     encoder = LpcEncoder(sound_file, 256, 0, 10)
     encoder.encode_signal()
-    pass
+
+    decoder = LpcDecoder()
+    decoder.load_data(encoder.frame_data, encoder.window_size, encoder.sample_rate, encoder.overlap, encoder.order)
+    decoder.decode_signal()
+    plt.plot(decoder.signal[:512])
+    plt.show()
+    play_signal(decoder.signal, decoder.sample_rate)

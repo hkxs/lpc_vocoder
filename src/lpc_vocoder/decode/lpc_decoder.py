@@ -27,8 +27,7 @@ from lpc_vocoder.utils.utils import gen_excitation
 
 
 class LpcDecoder:
-    def __init__(self, filename: Path):
-        self.filename = filename
+    def __init__(self):
         self.data = []
         self.sample_rate = None
         self.window_size = None
@@ -38,8 +37,16 @@ class LpcDecoder:
         self._audio_frames = []
         self.signal = None
 
-    def _get_signal_data(self):
-        with open(self.filename) as f:
+    def load_data(self, data: list[dict[float, float, np.array]], window_size: int, sample_rate: int,  overlap: int, order: int) -> None:
+        """ Load data directly from the encoder """
+        self.frame_data = data
+        self.window_size = window_size
+        self.sample_rate = sample_rate
+        self.overlap = overlap
+        self.order = order
+
+    def load_data_file(self, filename: Path) -> None:
+        with open(filename) as f:
             audio_data = f.readlines()
         self.window_size, self.sample_rate, self.overlap, self.order = map(int, audio_data[0].split(","))
 
@@ -49,7 +56,7 @@ class LpcDecoder:
                           "coefficients": np.frombuffer(bytes.fromhex(lpc_coefficients), dtype=np.float32)}
             self.frame_data.append(frame_data)
 
-    def decode_signal(self):
+    def decode_signal(self) -> None:
         self._audio_frames = []
         for frame in self.frame_data:
             if not frame["gain"]:
@@ -57,5 +64,5 @@ class LpcDecoder:
             else:
                 excitation = gen_excitation(frame["pitch"], self.window_size, self.sample_rate)
                 reconstructed = scipy.signal.lfilter([frame["gain"]], frame["coefficients"], excitation)
-        self._audio_frames.append(reconstructed)
+            self._audio_frames.append(reconstructed)
         self.signal = np.concatenate(self._audio_frames)
