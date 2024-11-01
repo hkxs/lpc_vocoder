@@ -26,66 +26,55 @@ from typing import Tuple
 import librosa
 import librosa.feature
 import numpy as np
-import scipy
 
-from lpc_vocoder.encode.pitch_estimation import pitch_estimator
+from lpc_vocoder.utils.pitch_estimation import pitch_estimator
+from lpc_vocoder.utils.utils import get_frame_gain, is_silence
 
 logger = logging.getLogger(__name__)
 
-# format
-# frame size, sample rate, overlap, order, pitch, gain, data, pitch, gain, data
-# if pitch == 0, then use noise as input
 
-def preephasis(signal: np.ndarray) -> np.ndarray:
-    return scipy.signal.lfilter([1, 0.9375], [1], signal)
-
-
-def get_gain(frame: np.array, coefficients: np.array) -> float:
-    rxx = librosa.autocorrelate(frame)
-    return np.sqrt(np.dot(coefficients, rxx[:len(coefficients)]))
-
-
-def _is_silence(signal: np.array) -> bool:
-    """
-    Check if the signal is silence, it uses -60dB as threshold, this is based on
-    librosa.effects._signal_to_frame_nonsilent
-    """
-    rms = librosa.feature.rms(y=signal, frame_length=256, hop_length=256)
-    power = librosa.core.amplitude_to_db(rms[..., 0, :], ref=np.max, top_db=None)
-    is_silence = np.flatnonzero(power < -60)
-    return is_silence.size > 0
+class LpcEncoder:
+    def __init__(self, filename: Path, window_size: int = None, overlap: int = 50, order: int = 10):
+        self.filename = filename
+        self.order = order
+        self.lpc_coefficients = []
+        self.sample_rate = librosa.get_samplerate(str(self.filename))
+        self.window_size = window_size if window_size else int(self.sample_rate * 0.03)  # use a 30ms window
+        self.overlap = window_size - int(overlap / 100 * window_size)
+        logger.debug(f"Sampling rate: {self.sample_rate} Hz")
+        logger.debug(f"Frame Size: {self.window_size} samples")
+        logger.debug(f"Overlap: {self.overlap} samples")
 
 
-def _process_frame(frame: np.array, sample_rate: float, order: int) -> Tuple[float, float, np.ndarray]:
-    if _is_silence(frame):
-        logger.debug("Silence found")
-        lpc_coefficients = np.array([1] * 10)
-        gain = 0
-        pitch = 0
-    else:
-        pitch = pitch_estimator(frame, sample_rate)
-        lpc_coefficients = librosa.lpc(frame, order=order)
-        gain = get_gain(frame, lpc_coefficients)
-    logger.debug(f"Pitch: {pitch}")
-    logger.debug(f"Gain {gain}")
-    return pitch, gain, lpc_coefficients
+    def encode_signal(self):
+        # window = librosa.filters.get_window('hamming', window_size)
+        frames = librosa.stream(str(self.filename), block_length=1, frame_length=self.window_size,
+                                hop_length=self.overlap, mono=False, dtype=np.float64)
 
-
-def encode_signal(filename: Path, window_size: int = None, overlap: int = 50, order: int = 10):
-    sr = librosa.get_samplerate(str(filename))
-    logger.debug(f"Sampling rate: {sr}")
-
-    if not window_size:
-        window_size = int(sr * 0.03)  # use a 30ms window
-
-    overlap = window_size - int(overlap/100 * window_size)
-
-    # window = librosa.filters.get_window('hamming', window_size)
-
-    frames = librosa.stream(str(filename), block_length=1, frame_length=window_size, hop_length=overlap, mono=False)
-
-    with open("file.txt", "w") as f:
-        f.write(f"{256}, {sr}, {0}, {10}\n")
         for frame in frames:
-            pitch, gain, a = _process_frame(frame, sr, 10)
-            f.write(f"{pitch}, {gain}, {a.tobytes().hex()}\n")
+            pitch, gain, coefficients = self._process_frame(frame)
+            frame_data = {"pictch": pitch, "gain": gain, "coefficients": coefficients}
+            self.lpc_coefficients.append(frame_data)
+
+    def save_data(self, filename: Path):
+        # format
+        # frame size, sample rate, overlap, order, pitch, gain, data, pitch, gain, data
+        # if pitch == 0, then use noise as input
+        with open(filename, "w") as f:
+            f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
+            for frame in self.lpc_coefficients:
+                f.write(f"{frame['pitch']}, {frame['gain']}, {frame['coefficients'].tobytes().hex()}\n")
+
+    def _process_frame(self, frame: np.array) -> Tuple[float, float, np.ndarray]:
+        if is_silence(frame):
+            logger.debug("Silence found")
+            lpc_coefficients = np.array([1] * 10)
+            gain = 0
+            pitch = 0
+        else:
+            pitch = pitch_estimator(frame, self.sample_rate)
+            lpc_coefficients = librosa.lpc(frame, order=self.order)
+            gain = get_frame_gain(frame, lpc_coefficients)
+        logger.debug(f"Pitch: {pitch}")
+        logger.debug(f"Gain {gain}")
+        return pitch, gain, lpc_coefficients
