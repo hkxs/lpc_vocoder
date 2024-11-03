@@ -58,11 +58,12 @@ class LpcDecoder:
 
     def decode_signal(self) -> None:
         self._audio_frames = []
+        initial_conditions = np.zeros(self.order)
         for frame in self.frame_data:
             if not frame["gain"]:
-                reconstructed = np.array([0] * self.window_size)  # just add silence
+                reconstructed = np.zeros(self.window_size)  # just add silence
             else:
                 excitation = gen_excitation(frame["pitch"], self.window_size, self.sample_rate)
-                reconstructed = scipy.signal.lfilter([frame["gain"]], frame["coefficients"], excitation)
+                reconstructed, initial_conditions = scipy.signal.lfilter([frame["gain"]], frame["coefficients"], excitation, zi=initial_conditions)
             self._audio_frames.append(reconstructed)
         self.signal = np.concatenate(self._audio_frames)
