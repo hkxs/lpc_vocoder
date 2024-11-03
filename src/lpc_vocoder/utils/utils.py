@@ -42,9 +42,7 @@ def gen_excitation(pitch: float, frame_size, sample_rate: int):
 
 def get_frame_gain(frame: np.array, coefficients: np.array) -> float:
     rxx = librosa.autocorrelate(frame, max_size=len(coefficients))
-    g_squared = rxx[0] - np.dot(coefficients[1:], rxx[1:])
-    return np.sqrt(g_squared)
-
+    return np.sqrt(np.dot(coefficients, rxx))
 
 def is_silence(signal: np.array) -> bool:
     """
