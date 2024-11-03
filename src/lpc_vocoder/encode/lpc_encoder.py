@@ -26,6 +26,7 @@ from typing import Tuple
 import librosa
 import librosa.feature
 import numpy as np
+import scipy
 
 from lpc_vocoder.utils.pitch_estimation import pitch_estimator
 from lpc_vocoder.utils.utils import get_frame_gain, is_silence
@@ -34,24 +35,33 @@ logger = logging.getLogger(__name__)
 
 
 class LpcEncoder:
-    def __init__(self, filename: Path, window_size: int = None, overlap: int = 50, order: int = 10):
-        self.filename = filename
+    def __init__(self, order: int = 10):
+        self._frames = None
+        self.sample_rate = None
         self.order = order
         self.frame_data = []
-        self.sample_rate = librosa.get_samplerate(str(self.filename))
-        self.window_size = window_size if window_size else int(self.sample_rate * 0.03)  # use a 30ms window
-        self.overlap = window_size - int(overlap / 100 * window_size)
-        logger.debug(f"Sampling rate: {self.sample_rate} Hz")
-        logger.debug(f"Frame Size: {self.window_size} samples")
-        logger.debug(f"Overlap: {self.overlap} samples")
+        self.window_size = None
+        self.overlap = None
 
+    def load_data(self, data: np.array, sample_rate: int, window_size: int, overlap: int = 50) -> None:
+        self._get_window_data(window_size, overlap)
+        self._frames = librosa.util.frame(data.astype(np.float64), frame_length=self.window_size, hop_length=self.overlap, axis=0)
+        self.sample_rate = sample_rate
+
+    def load_file(self, filename: Path, window_size: int, overlap: int = 50):
+        self.sample_rate = librosa.get_samplerate(str(filename))
+        self._get_window_data(window_size, overlap)
+        self._frames = librosa.stream(str(filename), block_length=1, frame_length=self.window_size,
+                                hop_length=self.overlap, mono=False, dtype=np.float64)
+        self._frames = list(self._frames)
+
+    def _get_window_data(self, window_size, overlap):
+        self.window_size = window_size if window_size else int(self.sample_rate * 0.03)  # use a 30ms window
+        self.overlap = self.window_size - int(overlap / 100 * self.window_size)  # calculate overlap in samples
 
     def encode_signal(self) -> None:
         # window = librosa.filters.get_window('hamming', window_size)
-        frames = librosa.stream(str(self.filename), block_length=1, frame_length=self.window_size,
-                                hop_length=self.overlap, mono=False, dtype=np.float64)
-
-        for frame in frames:
+        for frame in self._frames:
             pitch, gain, coefficients = self._process_frame(frame)
             frame_data = {"pitch": pitch, "gain": gain, "coefficients": coefficients}
             self.frame_data.append(frame_data)
@@ -72,8 +82,15 @@ class LpcEncoder:
             pitch = 0
         else:
             pitch = pitch_estimator(frame, self.sample_rate)
-            lpc_coefficients = librosa.lpc(frame, order=self.order)
+            # lpc_coefficients = librosa.lpc(frame, order=self.order)
+            lpc_coefficients = self._calculate_lpc(frame)
             gain = get_frame_gain(frame, lpc_coefficients)
         logger.debug(f"Pitch: {pitch}")
         logger.debug(f"Gain {gain}")
         return pitch, gain, lpc_coefficients
+
+
+    def _calculate_lpc(self, data):
+        rxx = librosa.autocorrelate(data, max_size=self.order + 1)
+        coeffs = scipy.linalg.solve_toeplitz((rxx[:-1], rxx[:-1]), rxx[1:])
+        return np.concatenate(([1], -coeffs))
