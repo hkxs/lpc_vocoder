@@ -45,22 +45,23 @@ class LpcEncoder:
 
     def load_data(self, data: np.array, sample_rate: int, window_size: int, overlap: int = 50) -> None:
         self._get_window_data(window_size, overlap)
-        self._frames = librosa.util.frame(data.astype(np.float64), frame_length=self.window_size, hop_length=self.overlap, axis=0)
+        self._frames = librosa.util.frame(data.astype(np.float64), frame_length=self.window_size, hop_length=self._hop_size, axis=0)
         self.sample_rate = sample_rate
+        self.frame_data = []
 
-    def load_file(self, filename: Path, window_size: int, overlap: int = 50):
+    def load_file(self, filename: Path, window_size: int = None, overlap: int = 50):
         self.sample_rate = librosa.get_samplerate(str(filename))
         self._get_window_data(window_size, overlap)
         self._frames = librosa.stream(str(filename), block_length=1, frame_length=self.window_size,
-                                hop_length=self.overlap, mono=False, dtype=np.float64)
-        self._frames = list(self._frames)
+                                hop_length=self._hop_size, mono=False, dtype=np.float64)
+        self.frame_data = []
 
     def _get_window_data(self, window_size, overlap):
+        self.overlap = overlap
         self.window_size = window_size if window_size else int(self.sample_rate * 0.03)  # use a 30ms window
-        self.overlap = self.window_size - int(overlap / 100 * self.window_size)  # calculate overlap in samples
+        self._hop_size = self.window_size - int(overlap / 100 * self.window_size)  # calculate overlap in samples
 
     def encode_signal(self) -> None:
-        # window = librosa.filters.get_window('hamming', window_size)
         for frame in self._frames:
             pitch, gain, coefficients = self._process_frame(frame)
             frame_data = {"pitch": pitch, "gain": gain, "coefficients": coefficients}
@@ -75,15 +76,15 @@ class LpcEncoder:
                 f.write(f"{frame['pitch']}, {frame['gain']}, {frame['coefficients'].tobytes().hex()}\n")
 
     def _process_frame(self, frame: np.array) -> Tuple[float, float, np.ndarray]:
-        if is_silence(frame):
+        if is_silence(frame) or len(frame) < self.window_size:
             logger.debug("Silence found")
-            lpc_coefficients = np.array([1] * 10)
+            lpc_coefficients = np.ones(self.order + 1)
             gain = 0
             pitch = 0
         else:
+            window = librosa.filters.get_window('hamming', self.window_size)
             pitch = pitch_estimator(frame, self.sample_rate)
-            # lpc_coefficients = librosa.lpc(frame, order=self.order)
-            lpc_coefficients = self._calculate_lpc(frame)
+            lpc_coefficients = self._calculate_lpc( window * frame)
             gain = get_frame_gain(frame, lpc_coefficients)
         logger.debug(f"Pitch: {pitch}")
         logger.debug(f"Gain {gain}")
