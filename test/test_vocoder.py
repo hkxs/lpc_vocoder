@@ -48,9 +48,8 @@ class TestEncoder:
 
     @pytest.fixture(scope="class")
     def wav_file(self, sine_wave):
-        signal = sine_wave
         wav_file = Path("test.wav")
-        sf.write(wav_file, signal, samplerate=self.sample_rate)
+        sf.write(wav_file, sine_wave, samplerate=self.sample_rate)
         yield wav_file
         os.remove(wav_file)
 
@@ -93,7 +92,63 @@ class TestEncoder:
 
 class TestDecoder:
     sample_rate = 8000
+    order = 10
+    overlap = 50
+    window_size = 256
 
     @pytest.fixture(scope="class")
-    def encoder(self):
+    def frame_data(self):
+        coeffs = np.concatenate(([1], np.zeros(self.order)))
+        return {"pitch": -1.0, "gain": 0.5, "coefficients": np.array(coeffs)}
+
+    @pytest.fixture(scope="class")
+    def encoded_file(self, frame_data):
+        data_file = Path("test.txt")
+        with open(data_file, "w") as f:
+            f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
+            f.write(f"{frame_data['pitch']}, {frame_data['gain']}, {frame_data['coefficients'].tobytes().hex()}\n")
+            f.write(f"{frame_data['pitch']}, {frame_data['gain']}, {frame_data['coefficients'].tobytes().hex()}\n")
+        yield data_file
+        os.remove(data_file)
+
+    @pytest.fixture(scope="class")
+    def decoder(self):
         return LpcDecoder()
+
+    def test_load_data(self, decoder, frame_data):
+        decoder.load_data([frame_data], self.window_size, self.sample_rate, self.overlap, self.order)
+        assert decoder.order == self.order
+        assert decoder.window_size == self.window_size
+        assert decoder.sample_rate == self.sample_rate
+        assert decoder.overlap == self.overlap
+        assert decoder.overlap == self.overlap
+
+    def test_load_data_file(self, decoder, encoded_file):
+        decoder.load_data_file(encoded_file)
+        assert decoder.order == self.order
+        assert decoder.window_size == self.window_size
+        assert decoder.sample_rate == self.sample_rate
+        assert decoder.overlap == self.overlap
+        assert decoder.overlap == self.overlap
+
+    def test_decoding(self, decoder, frame_data):
+        decoder.load_data([frame_data], self.window_size, self.sample_rate, self.overlap, self.order)
+        assert not decoder.signal
+        decoder.decode_signal()
+        assert decoder.signal.any()
+
+
+class TestVocoder:
+    sample_rate = 8000
+
+    @pytest.fixture(scope="class")
+    def sine_wave(self):
+        return gen_sine_wave(440, self.sample_rate, 16000)
+
+    def test_vocoder(self, sine_wave):
+        encoder = LpcEncoder(order=10)
+        decoder = LpcDecoder()
+        encoder.load_data(sine_wave, self.sample_rate, 256, 50)
+        encoder.encode_signal()
+        decoder.load_data(encoder.frame_data, encoder.window_size, encoder.sample_rate, encoder.overlap, encoder.order)
+        decoder.decode_signal()

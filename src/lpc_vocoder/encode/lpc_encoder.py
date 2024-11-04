@@ -90,8 +90,7 @@ class LpcEncoder:
         logger.debug(f"Gain {gain}")
         return pitch, gain, lpc_coefficients
 
-
     def _calculate_lpc(self, data):
         rxx = librosa.autocorrelate(data, max_size=self.order + 1)
-        coeffs = scipy.linalg.solve_toeplitz((rxx[:-1], rxx[:-1]), rxx[1:])
-        return np.concatenate(([1], -coeffs))
+        coefficients = scipy.linalg.solve_toeplitz((rxx[:-1], rxx[:-1]), rxx[1:])
+        return np.concatenate(([1], -coefficients))

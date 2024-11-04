@@ -19,7 +19,7 @@
 #  SOFTWARE.
 
 from pathlib import Path
-
+from typing import Union
 import numpy as np
 import scipy
 
@@ -36,7 +36,7 @@ class LpcDecoder:
         self.frame_data = []
         self.signal = None
 
-    def load_data(self, data: list[dict[float, float, np.array]], window_size: int, sample_rate: int,  overlap: int, order: int) -> None:
+    def load_data(self, data: list[dict[str, Union[float, np.array]]], window_size: int, sample_rate: int,  overlap: int, order: int) -> None:
         """ Load data directly from the encoder """
         self.frame_data = data
         self.window_size = window_size
@@ -50,7 +50,7 @@ class LpcDecoder:
         self.window_size, self.sample_rate, self.overlap, self.order = map(int, audio_data[0].split(","))
         for frame in audio_data[1:]:
             pitch, gain, lpc_coefficients = frame.split(",")
-            frame_data = {"pictch": float(pitch), "gain": float(gain),
+            frame_data = {"pitch": float(pitch), "gain": float(gain),
                           "coefficients": np.frombuffer(bytes.fromhex(lpc_coefficients), dtype=np.float32)}
             self.frame_data.append(frame_data)
 
