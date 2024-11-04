@@ -34,7 +34,6 @@ class LpcDecoder:
         self.overlap = None
         self.order = None
         self.frame_data = []
-        self._audio_frames = []
         self.signal = None
 
     def load_data(self, data: list[dict[float, float, np.array]], window_size: int, sample_rate: int,  overlap: int, order: int) -> None:
@@ -49,7 +48,6 @@ class LpcDecoder:
         with open(filename) as f:
             audio_data = f.readlines()
         self.window_size, self.sample_rate, self.overlap, self.order = map(int, audio_data[0].split(","))
-
         for frame in audio_data[1:]:
             pitch, gain, lpc_coefficients = frame.split(",")
             frame_data = {"pictch": float(pitch), "gain": float(gain),
@@ -57,13 +55,19 @@ class LpcDecoder:
             self.frame_data.append(frame_data)
 
     def decode_signal(self) -> None:
-        self._audio_frames = []
         initial_conditions = np.zeros(self.order)
-        for frame in self.frame_data:
+        hop_size = int(self.window_size * (1 - self.overlap/100))  # calculate overlap in samples
+        total_length = len(self.frame_data) * hop_size + self.window_size
+        output_signal = np.zeros(total_length)
+
+        for index, frame in enumerate(self.frame_data):
             if not frame["gain"]:
                 reconstructed = np.zeros(self.window_size)  # just add silence
             else:
                 excitation = gen_excitation(frame["pitch"], self.window_size, self.sample_rate)
-                reconstructed, initial_conditions = scipy.signal.lfilter([frame["gain"]], frame["coefficients"], excitation, zi=initial_conditions)
-            self._audio_frames.append(reconstructed)
-        self.signal = np.concatenate(self._audio_frames)
+                reconstructed, initial_conditions = scipy.signal.lfilter([1.], frame["coefficients"], excitation, zi=initial_conditions)
+                reconstructed *= frame["gain"]
+            start_idx = index * hop_size
+            end_idx = start_idx + self.window_size
+            output_signal[start_idx:end_idx] += reconstructed
+        self.signal = output_signal
