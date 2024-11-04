@@ -141,14 +141,28 @@ class TestDecoder:
 class TestVocoder:
     sample_rate = 8000
 
-    @pytest.fixture(scope="class")
-    def sine_wave(self):
-        return gen_sine_wave(440, self.sample_rate, 16000)
+    audio_path = Path() / "audios"
 
-    def test_vocoder(self, sine_wave):
-        encoder = LpcEncoder(order=10)
+    def _process_audio(self, file, frame_size):
+        encoder = LpcEncoder(order=40)
         decoder = LpcDecoder()
-        encoder.load_data(sine_wave, self.sample_rate, 256, 50)
+        encoder.load_file(file, frame_size)
         encoder.encode_signal()
         decoder.load_data(encoder.frame_data, encoder.window_size, encoder.sample_rate, encoder.overlap, encoder.order)
         decoder.decode_signal()
+        play_signal(decoder.signal, decoder.sample_rate)
+
+    def test_vocoder_1(self):
+        self._process_audio(self.audio_path / "once_there_was.flac", 480)
+
+    def test_vocoder_2(self):
+        self._process_audio(self.audio_path / "the_boys.flac", 512)
+
+    def test_vocoder_3(self):
+        self._process_audio(self.audio_path / "what_do_you_mea_sir.flac", 512)
+
+    def test_vocoder_4(self):
+        self._process_audio(self.audio_path / "then_darkness.flac", 512)
+
+    def test_vocoder_5(self):
+        self._process_audio(self.audio_path / "sine_240hz.wav", 512)
