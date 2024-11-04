@@ -34,7 +34,7 @@ def deephasis(signal: np.ndarray) -> np.ndarray:
 
 def gen_excitation(pitch: float, frame_size, sample_rate: int):
     if pitch == -1:
-        excitation = np.random.rand(frame_size)
+        excitation = np.random.uniform(0, 1, frame_size)
     else:
         period = int(sample_rate // int(pitch))
         excitation = scipy.signal.unit_impulse(frame_size, range(0, frame_size, period))
