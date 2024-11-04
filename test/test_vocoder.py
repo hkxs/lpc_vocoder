@@ -17,23 +17,83 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-
+import os
 from pathlib import Path
 
-import matplotlib.pyplot as plt
+import numpy as np
+import soundfile as sf
+import pytest
 
 from lpc_vocoder.decode.lpc_decoder import LpcDecoder
 from lpc_vocoder.encode.lpc_encoder import LpcEncoder
 from lpc_vocoder.utils.utils import play_signal
 
-def test_vocoder():
-    sound_file = Path(__file__).parent / "audios" / "sine_24hz.wav"
-    encoder = LpcEncoder(sound_file, 256, 0, 10)
-    encoder.encode_signal()
 
-    decoder = LpcDecoder()
-    decoder.load_data(encoder.frame_data, encoder.window_size, encoder.sample_rate, encoder.overlap, encoder.order)
-    decoder.decode_signal()
-    plt.plot(decoder.signal[:512])
-    plt.show()
-    play_signal(decoder.signal, decoder.sample_rate)
+def gen_sine_wave(frequency, sample_rate, length):
+    samples = np.arange(length) / sample_rate
+    return np.sin(2 * np.pi * frequency * samples)
+
+
+class TestEncoder:
+
+    sample_rate = 8000
+
+    @pytest.fixture(scope="class")
+    def encoder(self):
+        return LpcEncoder()
+
+    @pytest.fixture(scope="class")
+    def sine_wave(self):
+        return gen_sine_wave(440, self.sample_rate, 16000)
+
+    @pytest.fixture(scope="class")
+    def wav_file(self, sine_wave):
+        signal = sine_wave
+        wav_file = Path("test.wav")
+        sf.write(wav_file, signal, samplerate=self.sample_rate)
+        yield wav_file
+        os.remove(wav_file)
+
+    def test_load_data_from_file(self, encoder, wav_file):
+        encoder.load_file(wav_file)
+        assert encoder.order == 10
+        assert encoder.sample_rate == self.sample_rate
+        assert encoder.window_size == 240
+        assert encoder.overlap == 50
+
+        encoder.load_file(wav_file, window_size=256, overlap=70)
+        assert encoder.order == 10
+        assert encoder.sample_rate == self.sample_rate
+        assert encoder.window_size == 256
+        assert encoder.overlap == 70
+
+    def test_load_data(self, encoder, sine_wave):
+        encoder.load_data(sine_wave, self.sample_rate, 256)
+        assert encoder.order == 10
+        assert encoder.sample_rate == self.sample_rate
+        assert encoder.window_size == 256
+        assert encoder.overlap == 50
+
+        encoder.load_data(sine_wave, self.sample_rate, 256, 70)
+        assert encoder.order == 10
+        assert encoder.sample_rate == self.sample_rate
+        assert encoder.window_size == 256
+        assert encoder.overlap == 70
+
+    def test_encoding(self, encoder, wav_file):
+        encoder.load_file(wav_file, window_size=256)
+        assert not encoder.frame_data
+        encoder.encode_signal()
+        assert encoder.frame_data
+
+        pitch = int(encoder.frame_data[0]["pitch"])
+        for frame in encoder.frame_data:
+            assert int(frame["pitch"]) == pitch
+        assert pitch == 444
+
+class TestDecoder:
+    sample_rate = 8000
+
+    @pytest.fixture(scope="class")
+    def encoder(self):
+        return LpcDecoder()
