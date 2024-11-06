@@ -22,6 +22,7 @@ from dataclasses import dataclass
 
 import numpy.typing as npt
 
+
 @dataclass
 class EncodedFrame:
     gain: float

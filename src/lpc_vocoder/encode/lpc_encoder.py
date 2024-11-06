@@ -41,10 +41,10 @@ logger = logging.getLogger(__name__)
 class LpcEncoder:
     def __init__(self, order: int = 10):
         logger.debug(f"Encoding order: {order}")
-        self._frames : npt.NDArray | Generator[np.ndarray, None, None] = np.array([0])
+        self._frames: npt.NDArray | Generator[np.ndarray, None, None] = np.array([0])
         self.sample_rate = 0
         self.order = order
-        self.frame_data : list[EncodedFrame] = []
+        self.frame_data: list[EncodedFrame] = []
         self.window_size = 0
         self.overlap = 0
 
