@@ -24,11 +24,11 @@ import numpy as np
 import scipy
 
 
-def preephasis(signal: np.ndarray) -> np.ndarray:
-    return scipy.signal.lfilter([1, 0.9375], [1], signal)
+def pre_emphasis(signal: np.ndarray) -> np.ndarray:
+    return scipy.signal.lfilter([1, -0.9375], [1], signal)
 
 
-def deephasis(signal: np.ndarray) -> np.ndarray:
+def de_emphasis(signal: np.ndarray) -> np.ndarray:
     return scipy.signal.lfilter([1], [1, -0.9375], signal)
 
 
@@ -40,9 +40,11 @@ def gen_excitation(pitch: float, frame_size, sample_rate: int):
         excitation = scipy.signal.unit_impulse(frame_size, range(0, frame_size, period))
     return excitation
 
+
 def get_frame_gain(frame: np.array, coefficients: np.array) -> float:
     rxx = librosa.autocorrelate(frame, max_size=len(coefficients))
     return np.sqrt(np.dot(coefficients, rxx))
+
 
 def is_silence(signal: np.array) -> bool:
     """
@@ -53,6 +55,7 @@ def is_silence(signal: np.array) -> bool:
     power = librosa.core.amplitude_to_db(rms[..., 0, :], ref=np.max, top_db=None)
     silence = np.flatnonzero(power < -60)
     return silence.size > 0
+
 
 def play_signal(signal: np.array, sample_rate: int):
     import pyaudio  # lazy loader since we don't need it all the time
