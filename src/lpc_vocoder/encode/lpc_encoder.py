@@ -21,7 +21,6 @@
 
 import logging
 from pathlib import Path
-from typing import Tuple
 
 import librosa
 import librosa.feature
@@ -90,11 +89,9 @@ class LpcEncoder:
         else:
             window = librosa.filters.get_window('hamming', self.window_size)
             pitch = pitch_estimator(frame, self.sample_rate)
-            logger.debug(f"Pitch: {pitch}")
             frame = pre_emphasis(window * frame)
             lpc_coefficients = self._calculate_lpc(frame)
             gain = get_frame_gain(frame, lpc_coefficients)
-            logger.debug(f"Gain {gain}")
 
         return EncodedFrame(gain, pitch, lpc_coefficients)
 

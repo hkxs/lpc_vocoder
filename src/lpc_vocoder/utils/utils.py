@@ -18,10 +18,14 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
+import logging
+
 import librosa
 import librosa.feature
 import numpy as np
 import scipy
+
+logger = logging.getLogger(__name__)
 
 
 def pre_emphasis(signal: np.ndarray) -> np.ndarray:
@@ -34,8 +38,10 @@ def de_emphasis(signal: np.ndarray) -> np.ndarray:
 
 def gen_excitation(pitch: float, frame_size, sample_rate: int):
     if pitch == -1:
+        logger.debug("Using noise as excitation")
         excitation = np.random.uniform(0, 1, frame_size)
     else:
+        logger.debug("Using impulse train as excitation")
         period = int(sample_rate // int(pitch))
         excitation = scipy.signal.unit_impulse(frame_size, range(0, frame_size, period))
     return excitation
@@ -43,7 +49,9 @@ def gen_excitation(pitch: float, frame_size, sample_rate: int):
 
 def get_frame_gain(frame: np.array, coefficients: np.array) -> float:
     rxx = librosa.autocorrelate(frame, max_size=len(coefficients))
-    return np.sqrt(np.dot(coefficients, rxx))
+    gain = np.sqrt(np.dot(coefficients, rxx))
+    logger.debug(f"Gain {gain}")
+    return gain
 
 
 def is_silence(signal: np.array) -> bool:
@@ -53,13 +61,14 @@ def is_silence(signal: np.array) -> bool:
     """
     rms = librosa.feature.rms(y=signal, frame_length=256, hop_length=256)
     power = librosa.core.amplitude_to_db(rms[..., 0, :], ref=np.max, top_db=None)
+    logger.debug(f"Frame Energy '{power[0]}'")
     silence = np.flatnonzero(power < -60)
     return silence.size > 0
 
 
 def play_signal(signal: np.array, sample_rate: int):
     import pyaudio  # lazy loader since we don't need it all the time
-
+    logger.debug(f"Playing signal")
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paFloat32, channels=1, rate=sample_rate, output=True)
     stream.write(signal.astype('float32').tobytes())

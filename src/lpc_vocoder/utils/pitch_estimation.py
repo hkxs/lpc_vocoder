@@ -88,46 +88,5 @@ def pitch_estimator(signal: np.array, sample_rate: float) -> float:
             logger.debug("Non-periodic signal")
 
     freq = sample_rate / period if period else -1
-
+    logger.debug(f"Pitch: {freq}")
     return freq
-
-
-
-if __name__ == '__main__':
-    import random
-    from datetime import datetime
-
-    FRAME_SIZE = 1024
-    FS = 44100
-    samples = np.arange(FRAME_SIZE) / FS
-    random.seed(datetime.now().timestamp())
-
-    print("-" * 20)
-    print("Clean Signal")
-    print("-" * 20)
-    for frequency in range(50, 600, 10):
-        sine_wave = np.sin(2 * np.pi * frequency * samples)
-        print(f"Real frequency: {frequency}")
-        est_freq = pitch_estimator(sine_wave, FS)
-        print(f"Estimated frequency: {est_freq}")
-
-        error_rate = abs((frequency - est_freq) / frequency)
-        error_rate = float(100 * error_rate)
-        print(f"{error_rate=}%")
-        assert error_rate <= 10  # check if we have less than 10% error
-
-
-    print("-" * 20)
-    print("Signal + Noise")
-    print("-" * 20)
-    for frequency in range(50, 600, 10):
-        sine_wave = np.sin(2 * np.pi * frequency * samples)
-        noise = 0.5 * np.random.rand(FRAME_SIZE)
-        print(f"Real frequency: {frequency}")
-        est_freq = pitch_estimator(sine_wave + noise, FS)
-        print(f"Estimated frequency: {est_freq}")
-
-        error_rate = abs((frequency - est_freq) / frequency)
-        error_rate = float(100 * error_rate)
-        print(f"{error_rate=}%")
-        assert error_rate <= 15  # check if we have less than 15% error
