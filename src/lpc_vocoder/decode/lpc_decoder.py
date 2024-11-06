@@ -53,8 +53,14 @@ class LpcDecoder:
         with open(filename) as f:
             audio_data = f.readlines()
         self.window_size, self.sample_rate, self.overlap, self.order = map(int, audio_data[0].split(","))
+        logger.debug(f"Encoding order: {self.order}")
+        logger.debug(f"Sample rate: {self.sample_rate}")
+        logger.debug(f"Using window size: {self.window_size}")
+
         for frame in audio_data[1:]:
             pitch, gain, lpc_coefficients = frame.split(",")
+            logger.debug(f"Pitch: {pitch}")
+            logger.debug(f"Gain {gain}")
             coefficients = np.frombuffer(bytes.fromhex(lpc_coefficients), dtype=np.float32)
             frame_data = EncodedFrame(float(gain), float(pitch), coefficients)
             self.frame_data.append(frame_data)
@@ -65,8 +71,10 @@ class LpcDecoder:
         total_length = len(self.frame_data) * hop_size + self.window_size
         output_signal = np.zeros(total_length)
 
+        logger.debug(f"Using Overlap: {self.overlap}% ({hop_size} samples)")
         for index, frame in enumerate(self.frame_data):
             if not frame.gain:
+                logger.debug("Adding Silence")
                 reconstructed = np.zeros(self.window_size)  # just add silence
             else:
                 excitation = gen_excitation(frame.pitch, self.window_size, self.sample_rate)
@@ -83,4 +91,5 @@ class LpcDecoder:
         sf.write(filename, self.signal, samplerate=self.sample_rate)
 
     def play_signal(self):
+        logger.debug("Playing signal")
         play_signal(self.signal, sample_rate=self.sample_rate)
