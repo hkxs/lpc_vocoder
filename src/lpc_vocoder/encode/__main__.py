@@ -25,7 +25,7 @@ from pathlib import Path
 
 from lpc_vocoder.encode.lpc_encoder import LpcEncoder
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("lpc_vocoder")
 
 
 def parse_args():
@@ -40,14 +40,14 @@ def parse_args():
     args = parser.parse_args()
 
     logging.basicConfig(handlers=[logging.StreamHandler()],
-                        format="%(asctime)s [%(levelname)s] %(message)s",
-                        level=logging.DEBUG if args.debug else logging.INFO)
+                        format="%(asctime)s [%(levelname)s] %(message)s")
 
     return args
 
 
 def main():
     args = parse_args()
+    logger.setLevel(level=logging.DEBUG if args.debug else logging.INFO)
     logger.info(f"Encoding file '{args.audio_file}'")
     encoder = LpcEncoder(order=args.order)
     encoder.load_file(args.audio_file, window_size=args.frame_size, overlap=args.overlap)
