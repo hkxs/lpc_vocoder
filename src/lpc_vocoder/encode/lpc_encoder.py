@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 class LpcEncoder:
     def __init__(self, order: int = 10):
+        logger.debug(f"Encoding order: {order}")
         self._frames = None
         self.sample_rate = None
         self.order = order
@@ -52,6 +53,7 @@ class LpcEncoder:
 
     def load_file(self, filename: Path, window_size: int = None, overlap: int = 50):
         self.sample_rate = librosa.get_samplerate(str(filename))
+        logger.debug(f"Sample rate {self.sample_rate}")
         self._get_window_data(window_size, overlap)
         self._frames = librosa.stream(str(filename), block_length=1, frame_length=self.window_size,
                                 hop_length=self._hop_size, mono=False, dtype=np.float64)
@@ -60,9 +62,12 @@ class LpcEncoder:
     def _get_window_data(self, window_size, overlap):
         self.overlap = overlap
         self.window_size = window_size if window_size else int(self.sample_rate * 0.03)  # use a 30ms window
+        logger.debug(f"Using window size: {self.window_size}")
         self._hop_size = self.window_size - int(overlap / 100 * self.window_size)  # calculate overlap in samples
+        logger.debug(f"Using Overlap: {self.overlap}% ({self._hop_size} samples)")
 
     def encode_signal(self) -> None:
+        logger.debug("Encoding Signal")
         for frame in self._frames:
             frame_data= self._process_frame(frame)
             self.frame_data.append(frame_data)
@@ -70,6 +75,7 @@ class LpcEncoder:
     def save_data(self, filename: Path) -> None:
         # format
         # frame size, sample rate, overlap, order, pitch, gain, data, pitch, gain, data
+        logger.debug(f"Saving data to '{filename}'")
         with open(filename, "w") as f:
             f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
             for frame in self.frame_data:
@@ -84,11 +90,11 @@ class LpcEncoder:
         else:
             window = librosa.filters.get_window('hamming', self.window_size)
             pitch = pitch_estimator(frame, self.sample_rate)
+            logger.debug(f"Pitch: {pitch}")
             frame = pre_emphasis(window * frame)
             lpc_coefficients = self._calculate_lpc(frame)
             gain = get_frame_gain(frame, lpc_coefficients)
-        logger.debug(f"Pitch: {pitch}")
-        logger.debug(f"Gain {gain}")
+            logger.debug(f"Gain {gain}")
 
         return EncodedFrame(gain, pitch, lpc_coefficients)
 
