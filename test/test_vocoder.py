@@ -151,7 +151,7 @@ class TestVocoder:
         encoder.encode_signal()
         decoder.load_data(encoder.frame_data, encoder.window_size, encoder.sample_rate, encoder.overlap, encoder.order)
         decoder.decode_signal()
-        play_signal(decoder.signal, decoder.sample_rate)
+        decoder.play_signal()
         plt.plot(decoder.signal)
         plt.show()
 

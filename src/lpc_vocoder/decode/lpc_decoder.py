@@ -19,12 +19,16 @@
 #  SOFTWARE.
 
 from pathlib import Path
-from typing import Union
+import logging
+
 import numpy as np
 import scipy
 
-from lpc_vocoder.utils.utils import gen_excitation, de_emphasis
+from lpc_vocoder.utils.utils import gen_excitation, de_emphasis, play_signal
 from lpc_vocoder.utils.dataclasses import EncodedFrame
+
+
+logger = logging.getLogger(__name__)
 
 
 class LpcDecoder:
@@ -72,3 +76,11 @@ class LpcDecoder:
             end_idx = start_idx + self.window_size
             output_signal[start_idx:end_idx] += reconstructed
         self.signal = output_signal
+
+    def save_audio(self, filename: Path) -> None:
+        import soundfile as sf  # lazy loader, we only load it if we need it
+        logger.debug(f"Creating file '{filename}'")
+        sf.write(filename, self.signal, samplerate=self.sample_rate)
+
+    def play_signal(self):
+        play_signal(self.signal, sample_rate=self.sample_rate)
