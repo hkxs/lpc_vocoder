@@ -29,5 +29,4 @@ class EncodedFrame:
     coefficients: npt.NDArray
 
     def __str__(self):
-        # TODO update it once I start storing everything as bytes in a file
-        return f"{self.pitch}, {self.gain}, {self.coefficients}\n"
+        return f"{self.pitch}, {self.gain}, {self.coefficients}"
