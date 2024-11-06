@@ -23,6 +23,7 @@ flake8-import-order = "^0.18.2"
 sphinx = "^8.1.3"
 sphinx-rtd-theme = "^3.0.1"
 mpld3 = "^0.5.10"
+mypy = "^1.13.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -33,6 +34,7 @@ max-line-length = 120
 count = true
 per-file-ignores = [
     "__init__.py:F401",
+    "__main__.py:E501",
 ]
 import-order-style = "pycharm"
 
