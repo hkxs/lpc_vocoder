@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 def _period_estimator(rxx: npt.NDArray, sample_rate: float, bandwidth: tuple[float, float], umbral: float) -> float:
-    min_sample = sample_rate // bandwidth[1]
-    max_sample = sample_rate // bandwidth[0]
+    min_sample = int(sample_rate // bandwidth[1])
+    max_sample = int(sample_rate // bandwidth[0])
 
     logger.debug(f"{min_sample=}, {max_sample=}")
     amplitude = rxx[min_sample:max_sample].max()

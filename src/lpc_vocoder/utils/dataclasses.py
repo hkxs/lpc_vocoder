@@ -20,18 +20,14 @@
 
 from dataclasses import dataclass
 
-import numpy as np
-
+import numpy.typing as npt
 
 @dataclass
 class EncodedFrame:
     gain: float
     pitch: float
-    coefficients: np.array
+    coefficients: npt.NDArray
 
     def __str__(self):
         # TODO update it once I start storing everything as bytes in a file
-        return f"{self.pitch}, {self.gain}, {self.coefficients.tobytes().hex()}\n"
-
-    def __repr__(self):
-        return f"{self.pitch}, {self.gain}, {self.coefficients}"
+        return f"{self.pitch}, {self.gain}, {self.coefficients}\n"

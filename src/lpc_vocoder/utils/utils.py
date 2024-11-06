@@ -23,20 +23,21 @@ import logging
 import librosa
 import librosa.feature
 import numpy as np
+import numpy.typing as npt
 import scipy
 
 logger = logging.getLogger(__name__)
 
 
-def pre_emphasis(signal: np.ndarray) -> np.ndarray:
+def pre_emphasis(signal: npt.NDArray) -> npt.NDArray:
     return scipy.signal.lfilter([1, -0.9375], [1], signal)
 
 
-def de_emphasis(signal: np.ndarray) -> np.ndarray:
+def de_emphasis(signal: npt.NDArray) -> npt.NDArray:
     return scipy.signal.lfilter([1], [1, -0.9375], signal)
 
 
-def gen_excitation(pitch: float, frame_size, sample_rate: int):
+def gen_excitation(pitch: float, frame_size: int, sample_rate: int):
     if pitch == -1:
         logger.debug("Using noise as excitation")
         excitation = np.random.uniform(0, 1, frame_size)
@@ -47,14 +48,14 @@ def gen_excitation(pitch: float, frame_size, sample_rate: int):
     return excitation
 
 
-def get_frame_gain(frame: np.array, coefficients: np.array) -> float:
+def get_frame_gain(frame: npt.NDArray, coefficients: npt.NDArray) -> float:
     rxx = librosa.autocorrelate(frame, max_size=len(coefficients))
     gain = np.sqrt(np.dot(coefficients, rxx))
     logger.debug(f"Gain {gain}")
     return gain
 
 
-def is_silence(signal: np.array) -> bool:
+def is_silence(signal: npt.NDArray) -> bool:
     """
     Check if the signal is silence, it uses -60dB as threshold, this is based on
     librosa.effects._signal_to_frame_nonsilent
@@ -66,7 +67,7 @@ def is_silence(signal: np.array) -> bool:
     return silence.size > 0
 
 
-def play_signal(signal: np.array, sample_rate: int):
+def play_signal(signal: npt.NDArray, sample_rate: int):
     import pyaudio  # lazy loader since we don't need it all the time
     logger.debug("Playing signal")
     p = pyaudio.PyAudio()

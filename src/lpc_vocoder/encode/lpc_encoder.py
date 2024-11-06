@@ -22,6 +22,7 @@
 import logging
 import struct
 from pathlib import Path
+from typing import Generator
 
 import librosa
 import librosa.feature
@@ -40,12 +41,12 @@ logger = logging.getLogger(__name__)
 class LpcEncoder:
     def __init__(self, order: int = 10):
         logger.debug(f"Encoding order: {order}")
-        self._frames = None
-        self.sample_rate = None
+        self._frames : npt.NDArray | Generator[np.ndarray, None, None] = np.array([0])
+        self.sample_rate = 0
         self.order = order
-        self.frame_data = []
-        self.window_size = None
-        self.overlap = None
+        self.frame_data : list[EncodedFrame] = []
+        self.window_size = 0
+        self.overlap = 0
 
     def to_dict(self):
         signal_data = {
@@ -66,8 +67,8 @@ class LpcEncoder:
         self.sample_rate = sample_rate
         self.frame_data = []
 
-    def load_file(self, filename: Path, window_size: int = None, overlap: int = 50):
-        self.sample_rate = librosa.get_samplerate(str(filename))
+    def load_file(self, filename: Path, window_size: int = 0, overlap: int = 50):
+        self.sample_rate = int(librosa.get_samplerate(str(filename)))
         logger.debug(f"Sample rate {self.sample_rate}")
         self._get_window_data(window_size, overlap)
         self._frames = librosa.stream(str(filename), block_length=1, frame_length=self.window_size,
@@ -111,8 +112,8 @@ class LpcEncoder:
         if is_silence(frame) or len(frame) < self.window_size:
             logger.debug("Silence found")
             lpc_coefficients = np.ones(self.order + 1)
-            gain = 0
-            pitch = 0
+            gain = 0.0
+            pitch = 0.0
         else:
             window = librosa.filters.get_window('hamming', self.window_size)
             pitch = pitch_estimator(frame, self.sample_rate)
