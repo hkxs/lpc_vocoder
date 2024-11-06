@@ -24,9 +24,10 @@ from pathlib import Path
 
 import numpy as np
 import scipy
-
-from lpc_vocoder.utils.utils import gen_excitation, de_emphasis, play_signal
 from lpc_vocoder.utils.dataclasses import EncodedFrame
+from lpc_vocoder.utils.utils import de_emphasis
+from lpc_vocoder.utils.utils import gen_excitation
+from lpc_vocoder.utils.utils import play_signal
 
 
 logger = logging.getLogger(__name__)
@@ -59,11 +60,10 @@ class LpcDecoder:
         offset += struct.calcsize("i")
         self.sample_rate = struct.unpack_from("i", encoded_data, offset)[0]
         offset += struct.calcsize("i")
-        self.overlap= struct.unpack_from("i", encoded_data, offset)[0]
+        self.overlap = struct.unpack_from("i", encoded_data, offset)[0]
         offset += struct.calcsize("i")
         self.order = struct.unpack_from("i", encoded_data, offset)[0]
         offset += struct.calcsize("i")
-
 
         logger.debug(f"Encoding order: {self.order}")
         logger.debug(f"Sample rate: {self.sample_rate}")
@@ -95,7 +95,8 @@ class LpcDecoder:
                 reconstructed = np.zeros(self.window_size)  # just add silence
             else:
                 excitation = gen_excitation(frame.pitch, self.window_size, self.sample_rate)
-                reconstructed, initial_conditions = scipy.signal.lfilter([1.], frame.coefficients, frame.gain * excitation, zi=initial_conditions)
+                reconstructed, initial_conditions = scipy.signal.lfilter([1.], frame.coefficients,
+                                                                         frame.gain * excitation, zi=initial_conditions)
                 reconstructed = de_emphasis(reconstructed)
             start_idx = index * hop_size
             end_idx = start_idx + self.window_size
@@ -107,6 +108,6 @@ class LpcDecoder:
         logger.debug(f"Creating file '{filename}'")
         sf.write(filename, self.signal, samplerate=self.sample_rate)
 
-    def play_signal(self):
+    def play_signal(self) -> None:
         logger.debug("Playing signal")
         play_signal(self.signal, sample_rate=self.sample_rate)

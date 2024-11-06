@@ -21,11 +21,12 @@
 import logging
 
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
 
-def _period_estimator(rxx: np.array, sample_rate: float, bandwidth: tuple[float, float], umbral: float) -> float:
+def _period_estimator(rxx: npt.NDArray, sample_rate: float, bandwidth: tuple[float, float], umbral: float) -> float:
     min_sample = sample_rate // bandwidth[1]
     max_sample = sample_rate // bandwidth[0]
 
@@ -39,7 +40,7 @@ def _period_estimator(rxx: np.array, sample_rate: float, bandwidth: tuple[float,
     return period
 
 
-def pitch_estimator(signal: np.array, sample_rate: float) -> float:
+def pitch_estimator(signal: npt.NDArray, sample_rate: float) -> float:
     """
     Estimate the pitch of a signal
 
@@ -58,7 +59,7 @@ def pitch_estimator(signal: np.array, sample_rate: float) -> float:
 
     Parameters
     ----------
-    signal : np.array
+    signal : npt.NDArray
         Signal to be analyzed
     sample_rate : int
         Sample rate of the signal

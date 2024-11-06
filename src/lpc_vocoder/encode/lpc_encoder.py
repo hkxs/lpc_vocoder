@@ -26,11 +26,13 @@ from pathlib import Path
 import librosa
 import librosa.feature
 import numpy as np
+import numpy.typing as npt
 import scipy
-
-from lpc_vocoder.utils.pitch_estimation import pitch_estimator
-from lpc_vocoder.utils.utils import get_frame_gain, is_silence, pre_emphasis
 from lpc_vocoder.utils.dataclasses import EncodedFrame
+from lpc_vocoder.utils.pitch_estimation import pitch_estimator
+from lpc_vocoder.utils.utils import get_frame_gain
+from lpc_vocoder.utils.utils import is_silence
+from lpc_vocoder.utils.utils import pre_emphasis
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +59,10 @@ class LpcEncoder:
         }
         return signal_data
 
-    def load_data(self, data: np.array, sample_rate: int, window_size: int, overlap: int = 50) -> None:
+    def load_data(self, data: npt.NDArray, sample_rate: int, window_size: int, overlap: int = 50) -> None:
         self._get_window_data(window_size, overlap)
-        self._frames = librosa.util.frame(data.astype(np.float64), frame_length=self.window_size, hop_length=self._hop_size, axis=0)
+        self._frames = librosa.util.frame(data.astype(np.float64), frame_length=self.window_size,
+                                          hop_length=self._hop_size, axis=0)
         self.sample_rate = sample_rate
         self.frame_data = []
 
@@ -68,7 +71,7 @@ class LpcEncoder:
         logger.debug(f"Sample rate {self.sample_rate}")
         self._get_window_data(window_size, overlap)
         self._frames = librosa.stream(str(filename), block_length=1, frame_length=self.window_size,
-                                hop_length=self._hop_size, mono=False, dtype=np.float64)
+                                      hop_length=self._hop_size, mono=False, dtype=np.float64)
         self.frame_data = []
 
     def _get_window_data(self, window_size, overlap):
@@ -81,7 +84,7 @@ class LpcEncoder:
     def encode_signal(self) -> None:
         logger.debug("Encoding Signal")
         for frame in self._frames:
-            frame_data= self._process_frame(frame)
+            frame_data = self._process_frame(frame)
             self.frame_data.append(frame_data)
 
     def save_data(self, filename: Path) -> None:
@@ -101,16 +104,10 @@ class LpcEncoder:
             data.extend(struct.pack('d', frame.pitch))
             data.extend(frame.coefficients.tobytes())
 
-
         with open(filename, "wb") as f:
             f.write(data)
 
-        # with open(filename, "w") as f:
-        #     f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
-        #     for frame in self.frame_data:
-        #         f.write(str(frame))
-
-    def _process_frame(self, frame: np.array) -> EncodedFrame:
+    def _process_frame(self, frame: npt.NDArray) -> EncodedFrame:
         if is_silence(frame) or len(frame) < self.window_size:
             logger.debug("Silence found")
             lpc_coefficients = np.ones(self.order + 1)

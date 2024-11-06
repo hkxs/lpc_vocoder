@@ -54,5 +54,6 @@ def main():
     encoder.encode_signal()
     encoder.save_data(args.filename)
 
+
 if __name__ == '__main__':
     main()

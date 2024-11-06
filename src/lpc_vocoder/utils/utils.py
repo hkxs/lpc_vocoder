@@ -68,7 +68,7 @@ def is_silence(signal: np.array) -> bool:
 
 def play_signal(signal: np.array, sample_rate: int):
     import pyaudio  # lazy loader since we don't need it all the time
-    logger.debug(f"Playing signal")
+    logger.debug("Playing signal")
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paFloat32, channels=1, rate=sample_rate, output=True)
     stream.write(signal.astype('float32').tobytes())
