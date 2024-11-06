@@ -17,7 +17,9 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
+
 import os
+import struct
 from pathlib import Path
 
 import numpy as np
@@ -104,11 +106,19 @@ class TestDecoder:
 
     @pytest.fixture(scope="class")
     def encoded_file(self, frame_data):
-        data_file = Path("test.txt")
-        with open(data_file, "w") as f:
-            f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
-            f.write(str(frame_data))
-            f.write(str(frame_data))
+        data_file = Path("test.bin")
+        data = bytearray()
+        data.extend(struct.pack('i', self.window_size))
+        data.extend(struct.pack('i', self.sample_rate))
+        data.extend(struct.pack('i', self.overlap))
+        data.extend(struct.pack('i', self.order))
+
+        data.extend(struct.pack('d', frame_data.gain))
+        data.extend(struct.pack('d', frame_data.pitch))
+        data.extend(frame_data.coefficients.tobytes())
+
+        with open(data_file, "wb") as f:
+            f.write(data)
         yield data_file
         os.remove(data_file)
 
@@ -173,18 +183,38 @@ class TestVocoder:
         plt.plot(decoder.signal)
         plt.show()
 
+    def test_process_audio(self):
+        """
+        This test is just an end-to-end test, the fact that we don't raise
+        anything is enough for me to know that everything is working
+        """
+        encoder = LpcEncoder(order=40)
+        encoder.load_file(self.audio_path / "once_there_was.flac", 480)
+        encoder.encode_signal()
+        encoder.save_data(Path("audio.bin"))
 
+        decoder = LpcDecoder()
+        decoder.load_data_file(Path("audio.bin"))
+        decoder.decode_signal()
+
+        os.remove("audio.bin")
+
+    @pytest.mark.subjective
     def test_vocoder_1(self):
         self._process_audio(self.audio_path / "once_there_was.flac", 480)
 
+    @pytest.mark.subjective
     def test_vocoder_2(self):
         self._process_audio(self.audio_path / "the_boys.flac", 512)
 
+    @pytest.mark.subjective
     def test_vocoder_3(self):
         self._process_audio(self.audio_path / "what_do_you_mea_sir.flac", 512)
 
+    @pytest.mark.subjective
     def test_vocoder_4(self):
         self._process_audio(self.audio_path / "then_darkness.flac", 512)
 
+    @pytest.mark.subjective
     def test_vocoder_5(self):
         self._process_audio(self.audio_path / "sine_240hz.wav", 512)
