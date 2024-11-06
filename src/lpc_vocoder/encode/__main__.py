@@ -33,9 +33,9 @@ def parse_args():
     parser.description = "Encode a .wav signal using LPC"
     parser.add_argument("audio_file", type=Path, help="Name of the input file")
     parser.add_argument("filename", type=Path, help="Name of the output file")
-    parser.add_argument("--order",  default=10, action="store_true", help=f"Order of the LPC filter, default '{10}'")
-    parser.add_argument("--frame_size", action="store_true", help="Frame Size, if not provided it will use a 30ms window based on the sample rate")
-    parser.add_argument("--overlap", default=50, action="store_true", help=f"Overlap as percentage (0-100), default '{50}'")
+    parser.add_argument("--order",  type=int, default=10, help=f"Order of the LPC filter, default '{10}'")
+    parser.add_argument("--frame_size", type=int, help="Frame Size, if not provided it will use a 30ms window based on the sample rate")
+    parser.add_argument("--overlap", type=int, default=50, help=f"Overlap as percentage (0-100), default '{50}'")
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug messages")
     args = parser.parse_args()
 
