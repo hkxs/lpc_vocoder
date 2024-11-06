@@ -41,13 +41,13 @@ class LpcDecoder:
         self.frame_data = []
         self.signal = None
 
-    def load_data(self, data: list[EncodedFrame], window_size: int, sample_rate: int,  overlap: int, order: int) -> None:
+    def load_data(self, data: dict) -> None:
         """ Load data directly from the encoder """
-        self.frame_data = data
-        self.window_size = window_size
-        self.sample_rate = sample_rate
-        self.overlap = overlap
-        self.order = order
+        self.frame_data = [EncodedFrame(**frame) for frame in data["frames"]]
+        self.window_size = data["encoder_info"]["window_size"]
+        self.sample_rate = data["encoder_info"]["sample_rate"]
+        self.overlap = data["encoder_info"]["overlap"]
+        self.order = data["encoder_info"]["order"]
 
     def load_data_file(self, filename: Path) -> None:
         with open(filename) as f:

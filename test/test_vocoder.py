@@ -26,7 +26,6 @@ import pytest
 
 from lpc_vocoder.decode.lpc_decoder import LpcDecoder
 from lpc_vocoder.encode.lpc_encoder import LpcEncoder
-from lpc_vocoder.utils.utils import play_signal
 from lpc_vocoder.utils.dataclasses import EncodedFrame
 
 
@@ -118,7 +117,17 @@ class TestDecoder:
         return LpcDecoder()
 
     def test_load_data(self, decoder, frame_data):
-        decoder.load_data([frame_data], self.window_size, self.sample_rate, self.overlap, self.order)
+        data = {
+            "encoder_info": {
+                "order": self.order,
+                "window_size": self.window_size,
+                "overlap": self.overlap,
+                "sample_rate": self.sample_rate,
+            },
+            "frames": [frame_data.__dict__],
+        }
+
+        decoder.load_data(data)
         assert decoder.order == self.order
         assert decoder.window_size == self.window_size
         assert decoder.sample_rate == self.sample_rate
@@ -132,7 +141,16 @@ class TestDecoder:
         assert decoder.overlap == self.overlap
 
     def test_decoding(self, decoder, frame_data):
-        decoder.load_data([frame_data], self.window_size, self.sample_rate, self.overlap, self.order)
+        data = {
+            "encoder_info": {
+                "order": self.order,
+                "window_size": self.window_size,
+                "overlap": self.overlap,
+                "sample_rate": self.sample_rate,
+            },
+            "frames": [frame_data.__dict__],
+        }
+        decoder.load_data(data)
         assert not decoder.signal
         decoder.decode_signal()
         assert decoder.signal.any()
@@ -149,7 +167,7 @@ class TestVocoder:
         decoder = LpcDecoder()
         encoder.load_file(file, frame_size)
         encoder.encode_signal()
-        decoder.load_data(encoder.frame_data, encoder.window_size, encoder.sample_rate, encoder.overlap, encoder.order)
+        decoder.load_data(encoder.to_dict())
         decoder.decode_signal()
         decoder.play_signal()
         plt.plot(decoder.signal)
