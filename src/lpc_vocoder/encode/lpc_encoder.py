@@ -44,6 +44,18 @@ class LpcEncoder:
         self.window_size = None
         self.overlap = None
 
+    def to_dict(self):
+        signal_data = {
+            "encoder_info": {
+                "order": self.order,
+                "window_size": self.window_size,
+                "overlap": self.overlap,
+                "sample_rate": self.sample_rate,
+            },
+            "frames": [frame.__dict__ for frame in self.frame_data],
+        }
+        return signal_data
+
     def load_data(self, data: np.array, sample_rate: int, window_size: int, overlap: int = 50) -> None:
         self._get_window_data(window_size, overlap)
         self._frames = librosa.util.frame(data.astype(np.float64), frame_length=self.window_size, hop_length=self._hop_size, axis=0)
