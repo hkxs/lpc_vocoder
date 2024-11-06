@@ -27,6 +27,7 @@ import pytest
 from lpc_vocoder.decode.lpc_decoder import LpcDecoder
 from lpc_vocoder.encode.lpc_encoder import LpcEncoder
 from lpc_vocoder.utils.utils import play_signal
+from lpc_vocoder.utils.dataclasses import EncodedFrame
 
 
 def gen_sine_wave(frequency, sample_rate, length):
@@ -85,9 +86,9 @@ class TestEncoder:
         encoder.encode_signal()
         assert encoder.frame_data
 
-        pitch = int(encoder.frame_data[0]["pitch"])
+        pitch = int(encoder.frame_data[0].pitch)
         for frame in encoder.frame_data:
-            assert int(frame["pitch"]) == pitch
+            assert int(frame.pitch) == pitch
         assert pitch == 444
 
 class TestDecoder:
@@ -99,15 +100,16 @@ class TestDecoder:
     @pytest.fixture(scope="class")
     def frame_data(self):
         coeffs = np.concatenate(([1], np.zeros(self.order)))
-        return {"pitch": -1.0, "gain": 0.5, "coefficients": np.array(coeffs)}
+
+        return EncodedFrame(pitch=-1.0, gain=0.5, coefficients=np.array(coeffs))
 
     @pytest.fixture(scope="class")
     def encoded_file(self, frame_data):
         data_file = Path("test.txt")
         with open(data_file, "w") as f:
             f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
-            f.write(f"{frame_data['pitch']}, {frame_data['gain']}, {frame_data['coefficients'].tobytes().hex()}\n")
-            f.write(f"{frame_data['pitch']}, {frame_data['gain']}, {frame_data['coefficients'].tobytes().hex()}\n")
+            f.write(str(frame_data))
+            f.write(str(frame_data))
         yield data_file
         os.remove(data_file)
 
@@ -121,14 +123,12 @@ class TestDecoder:
         assert decoder.window_size == self.window_size
         assert decoder.sample_rate == self.sample_rate
         assert decoder.overlap == self.overlap
-        assert decoder.overlap == self.overlap
 
     def test_load_data_file(self, decoder, encoded_file):
         decoder.load_data_file(encoded_file)
         assert decoder.order == self.order
         assert decoder.window_size == self.window_size
         assert decoder.sample_rate == self.sample_rate
-        assert decoder.overlap == self.overlap
         assert decoder.overlap == self.overlap
 
     def test_decoding(self, decoder, frame_data):
@@ -144,6 +144,7 @@ class TestVocoder:
     audio_path = Path() / "audios"
 
     def _process_audio(self, file, frame_size):
+        import matplotlib.pyplot as plt
         encoder = LpcEncoder(order=40)
         decoder = LpcDecoder()
         encoder.load_file(file, frame_size)
@@ -151,6 +152,9 @@ class TestVocoder:
         decoder.load_data(encoder.frame_data, encoder.window_size, encoder.sample_rate, encoder.overlap, encoder.order)
         decoder.decode_signal()
         play_signal(decoder.signal, decoder.sample_rate)
+        plt.plot(decoder.signal)
+        plt.show()
+
 
     def test_vocoder_1(self):
         self._process_audio(self.audio_path / "once_there_was.flac", 480)

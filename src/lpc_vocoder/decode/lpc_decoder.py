@@ -23,7 +23,8 @@ from typing import Union
 import numpy as np
 import scipy
 
-from lpc_vocoder.utils.utils import gen_excitation
+from lpc_vocoder.utils.utils import gen_excitation, de_emphasis
+from lpc_vocoder.utils.dataclasses import EncodedFrame
 
 
 class LpcDecoder:
@@ -36,7 +37,7 @@ class LpcDecoder:
         self.frame_data = []
         self.signal = None
 
-    def load_data(self, data: list[dict[str, Union[float, np.array]]], window_size: int, sample_rate: int,  overlap: int, order: int) -> None:
+    def load_data(self, data: list[EncodedFrame], window_size: int, sample_rate: int,  overlap: int, order: int) -> None:
         """ Load data directly from the encoder """
         self.frame_data = data
         self.window_size = window_size
@@ -50,8 +51,8 @@ class LpcDecoder:
         self.window_size, self.sample_rate, self.overlap, self.order = map(int, audio_data[0].split(","))
         for frame in audio_data[1:]:
             pitch, gain, lpc_coefficients = frame.split(",")
-            frame_data = {"pitch": float(pitch), "gain": float(gain),
-                          "coefficients": np.frombuffer(bytes.fromhex(lpc_coefficients), dtype=np.float32)}
+            coefficients = np.frombuffer(bytes.fromhex(lpc_coefficients), dtype=np.float32)
+            frame_data = EncodedFrame(float(gain), float(pitch), coefficients)
             self.frame_data.append(frame_data)
 
     def decode_signal(self) -> None:
@@ -61,12 +62,12 @@ class LpcDecoder:
         output_signal = np.zeros(total_length)
 
         for index, frame in enumerate(self.frame_data):
-            if not frame["gain"]:
+            if not frame.gain:
                 reconstructed = np.zeros(self.window_size)  # just add silence
             else:
-                excitation = gen_excitation(frame["pitch"], self.window_size, self.sample_rate)
-                reconstructed, initial_conditions = scipy.signal.lfilter([1.], frame["coefficients"], excitation, zi=initial_conditions)
-                reconstructed *= frame["gain"]
+                excitation = gen_excitation(frame.pitch, self.window_size, self.sample_rate)
+                reconstructed, initial_conditions = scipy.signal.lfilter([1.], frame.coefficients, frame.gain * excitation, zi=initial_conditions)
+                reconstructed = de_emphasis(reconstructed)
             start_idx = index * hop_size
             end_idx = start_idx + self.window_size
             output_signal[start_idx:end_idx] += reconstructed

@@ -19,7 +19,6 @@
 #  SOFTWARE.
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from lpc_vocoder.utils.pitch_estimation import pitch_estimator
 
@@ -48,9 +47,6 @@ class TestPitchDetector:
         for frequency in range(50, 600, 10):
             signal = self.gen_sin_wave(frequency) + self.noise()
             est_freq = pitch_estimator(signal, self.sample_rate)
-
-            plt.plot(signal)
-            plt.show()
             error_rate = abs((frequency - est_freq) / frequency)
             error_rate = float(100 * error_rate)
             assert error_rate <= 10  # check if we have less than 10% error

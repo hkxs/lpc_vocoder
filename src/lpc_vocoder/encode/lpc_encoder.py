@@ -29,7 +29,8 @@ import numpy as np
 import scipy
 
 from lpc_vocoder.utils.pitch_estimation import pitch_estimator
-from lpc_vocoder.utils.utils import get_frame_gain, is_silence
+from lpc_vocoder.utils.utils import get_frame_gain, is_silence, pre_emphasis
+from lpc_vocoder.utils.dataclasses import EncodedFrame
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +64,7 @@ class LpcEncoder:
 
     def encode_signal(self) -> None:
         for frame in self._frames:
-            pitch, gain, coefficients = self._process_frame(frame)
-            frame_data = {"pitch": pitch, "gain": gain, "coefficients": coefficients}
+            frame_data= self._process_frame(frame)
             self.frame_data.append(frame_data)
 
     def save_data(self, filename: Path) -> None:
@@ -73,9 +73,9 @@ class LpcEncoder:
         with open(filename, "w") as f:
             f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
             for frame in self.frame_data:
-                f.write(f"{frame['pitch']}, {frame['gain']}, {frame['coefficients'].tobytes().hex()}\n")
+                f.write(str(frame))
 
-    def _process_frame(self, frame: np.array) -> Tuple[float, float, np.ndarray]:
+    def _process_frame(self, frame: np.array) -> EncodedFrame:
         if is_silence(frame) or len(frame) < self.window_size:
             logger.debug("Silence found")
             lpc_coefficients = np.ones(self.order + 1)
@@ -84,11 +84,13 @@ class LpcEncoder:
         else:
             window = librosa.filters.get_window('hamming', self.window_size)
             pitch = pitch_estimator(frame, self.sample_rate)
-            lpc_coefficients = self._calculate_lpc( window * frame)
+            frame = pre_emphasis(window * frame)
+            lpc_coefficients = self._calculate_lpc(frame)
             gain = get_frame_gain(frame, lpc_coefficients)
         logger.debug(f"Pitch: {pitch}")
         logger.debug(f"Gain {gain}")
-        return pitch, gain, lpc_coefficients
+
+        return EncodedFrame(gain, pitch, lpc_coefficients)
 
     def _calculate_lpc(self, data):
         rxx = librosa.autocorrelate(data, max_size=self.order + 1)
