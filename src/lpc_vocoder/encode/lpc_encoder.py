@@ -20,6 +20,7 @@
 
 
 import logging
+import struct
 from pathlib import Path
 
 import librosa
@@ -86,11 +87,28 @@ class LpcEncoder:
     def save_data(self, filename: Path) -> None:
         # format
         # frame size, sample rate, overlap, order, pitch, gain, data, pitch, gain, data
+        if not filename.suffix:
+            filename = filename.with_suffix(".bin")
         logger.debug(f"Saving data to '{filename}'")
-        with open(filename, "w") as f:
-            f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
-            for frame in self.frame_data:
-                f.write(str(frame))
+        data = bytearray()
+        data.extend(struct.pack('i', self.window_size))
+        data.extend(struct.pack('i', self.sample_rate))
+        data.extend(struct.pack('i', self.overlap))
+        data.extend(struct.pack('i', self.order))
+
+        for frame in self.frame_data:
+            data.extend(struct.pack('d', frame.gain))
+            data.extend(struct.pack('d', frame.pitch))
+            data.extend(frame.coefficients.tobytes())
+
+
+        with open(filename, "wb") as f:
+            f.write(data)
+
+        # with open(filename, "w") as f:
+        #     f.write(f"{self.window_size}, {self.sample_rate}, {self.overlap}, {self.order}\n")
+        #     for frame in self.frame_data:
+        #         f.write(str(frame))
 
     def _process_frame(self, frame: np.array) -> EncodedFrame:
         if is_silence(frame) or len(frame) < self.window_size:

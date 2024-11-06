@@ -18,8 +18,9 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-from pathlib import Path
 import logging
+import struct
+from pathlib import Path
 
 import numpy as np
 import scipy
@@ -50,18 +51,34 @@ class LpcDecoder:
         self.order = data["encoder_info"]["order"]
 
     def load_data_file(self, filename: Path) -> None:
-        with open(filename) as f:
-            audio_data = f.readlines()
-        self.window_size, self.sample_rate, self.overlap, self.order = map(int, audio_data[0].split(","))
+        with open(filename, "rb") as f:
+            encoded_data = f.read()
+
+        offset = 0
+        self.window_size = struct.unpack_from("i", encoded_data, offset)[0]
+        offset += struct.calcsize("i")
+        self.sample_rate = struct.unpack_from("i", encoded_data, offset)[0]
+        offset += struct.calcsize("i")
+        self.overlap= struct.unpack_from("i", encoded_data, offset)[0]
+        offset += struct.calcsize("i")
+        self.order = struct.unpack_from("i", encoded_data, offset)[0]
+        offset += struct.calcsize("i")
+
+
         logger.debug(f"Encoding order: {self.order}")
         logger.debug(f"Sample rate: {self.sample_rate}")
         logger.debug(f"Using window size: {self.window_size}")
 
-        for frame in audio_data[1:]:
-            pitch, gain, lpc_coefficients = frame.split(",")
-            logger.debug(f"Pitch: {pitch}")
-            logger.debug(f"Gain {gain}")
-            coefficients = np.frombuffer(bytes.fromhex(lpc_coefficients), dtype=np.float32)
+        while offset < len(encoded_data):
+            gain = struct.unpack_from('d', encoded_data, offset)[0]
+            offset += struct.calcsize('d')
+
+            pitch = struct.unpack_from('d', encoded_data, offset)[0]
+            offset += struct.calcsize('d')
+
+            coefficients = np.frombuffer(encoded_data, dtype=np.float64, count=self.order + 1, offset=offset)
+            offset += (self.order + 1) * coefficients.itemsize
+
             frame_data = EncodedFrame(float(gain), float(pitch), coefficients)
             self.frame_data.append(frame_data)
 
