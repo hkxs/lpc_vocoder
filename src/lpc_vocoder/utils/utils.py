@@ -30,14 +30,60 @@ logger = logging.getLogger(__name__)
 
 
 def pre_emphasis(signal: npt.NDArray) -> npt.NDArray:
+    """
+    Apply a pre-emphasis filter to the input signal to amplify high frequencies.
+
+    Parameters
+    ----------
+    signal : npt.NDArray
+        The input audio signal array.
+
+    Returns
+    -------
+    npt.NDArray
+        The pre-emphasized signal.
+    """
     return scipy.signal.lfilter([1, -0.9375], [1], signal)
 
 
 def de_emphasis(signal: npt.NDArray) -> npt.NDArray:
+    """
+    Apply a de-emphasis filter to the input signal to reverse pre-emphasis
+    filtering.
+
+    Parameters
+    ----------
+    signal : npt.NDArray
+        The pre-emphasized audio signal array.
+
+    Returns
+    -------
+    npt.NDArray
+        The de-emphasized (original) signal.
+    """
     return scipy.signal.lfilter([1], [1, -0.9375], signal)
 
 
 def gen_excitation(pitch: float, frame_size: int, sample_rate: int):
+    """
+    Generate an excitation signal for use in speech synthesis, either as noise
+    or an impulse train.
+
+    Parameters
+    ----------
+    pitch : float
+        The pitch frequency obtained by the pitch_estimator from module
+        lpc_vocoder.utils.pitch_estimation
+    frame_size : int
+        The number of samples in the generated excitation signal.
+    sample_rate : int
+        The sampling rate of the signal.
+
+    Returns
+    -------
+    npt.NDArray
+        The generated excitation signal.
+    """
     if pitch == -1:
         logger.debug("Using noise as excitation")
         excitation = np.random.uniform(0, 1, frame_size)
@@ -49,6 +95,22 @@ def gen_excitation(pitch: float, frame_size: int, sample_rate: int):
 
 
 def get_frame_gain(frame: npt.NDArray, coefficients: npt.NDArray) -> float:
+    """
+    Calculate the gain of a frame based on autocorrelation and filter
+    coefficients.
+
+    Parameters
+    ----------
+    frame : npt.NDArray
+        The audio frame for which gain is calculated.
+    coefficients : npt.NDArray
+        LPC filter coefficients.
+
+    Returns
+    -------
+    float
+        The calculated gain for the frame.
+    """
     rxx = librosa.autocorrelate(frame, max_size=len(coefficients))
     gain = np.sqrt(np.dot(coefficients, rxx))
     logger.debug(f"Gain {gain}")
@@ -57,8 +119,18 @@ def get_frame_gain(frame: npt.NDArray, coefficients: npt.NDArray) -> float:
 
 def is_silence(signal: npt.NDArray) -> bool:
     """
-    Check if the signal is silence, it uses -60dB as threshold, this is based on
-    librosa.effects._signal_to_frame_nonsilent
+    Check if the input signal is silent, using -60 dB as the threshold. This is
+    based on librosa.effects._signal_to_frame_nonsilent
+
+    Parameters
+    ----------
+    signal : npt.NDArray
+        The input audio signal array.
+
+    Returns
+    -------
+    bool
+        True if the signal is considered silent, False otherwise.
     """
     rms = librosa.feature.rms(y=signal, frame_length=256, hop_length=256)
     power = librosa.core.amplitude_to_db(rms[..., 0, :], ref=np.max, top_db=None)
@@ -68,6 +140,20 @@ def is_silence(signal: npt.NDArray) -> bool:
 
 
 def play_signal(signal: npt.NDArray, sample_rate: int):
+    """
+    Play the input signal through the computer's audio output.
+
+    Parameters
+    ----------
+    signal : npt.NDArray
+        The audio signal array to be played.
+    sample_rate : int
+        The sample rate of the audio signal.
+
+    Returns
+    -------
+    None
+    """
     import pyaudio  # lazy loader since we don't need it all the time
     logger.debug("Playing signal")
     p = pyaudio.PyAudio()

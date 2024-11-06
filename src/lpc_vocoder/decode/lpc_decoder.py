@@ -34,6 +34,30 @@ logger = logging.getLogger(__name__)
 
 
 class LpcDecoder:
+    """
+    A class for decoding LPC-encoded audio back to a waveform.
+
+    Notes
+    -----
+    This is a companion of the class LpcEncoder from module
+    lpc_vocoder.encoder.lpc_encoder
+
+    Attributes
+    ----------
+    frame_data : list of EncodedFrame
+        A list of frames to decode.
+    sample_rate : int
+        The sample rate of the audio.
+    window_size : int
+        The analysis window size in samples.
+    overlap : int
+        The percentage overlap between adjacent frames.
+    order : int
+        The order of the LPC filter.
+    signal : npt.NDArray
+        The reconstructed audio signal.
+    """
+
     def __init__(self):
         self.data = []
         self.sample_rate = None
@@ -44,7 +68,18 @@ class LpcDecoder:
         self.signal = None
 
     def load_data(self, data: dict) -> None:
-        """ Load data directly from the encoder """
+        """
+        Load LPC data from a dictionary containing encoded frames and metadata.
+
+        Notes
+        -----
+        This data should come from LpcEncoder().to_dict() method
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing encoded frames and metadata.
+        """
         self.frame_data = [EncodedFrame(**frame) for frame in data["frames"]]
         self.window_size = data["encoder_info"]["window_size"]
         self.sample_rate = data["encoder_info"]["sample_rate"]
@@ -52,6 +87,23 @@ class LpcDecoder:
         self.order = data["encoder_info"]["order"]
 
     def load_data_file(self, filename: Path) -> None:
+        """
+        Load LPC encoded data from a binary file.
+
+        The binary file contains frame encoding parameters and metadata,
+        including window size, sample rate, overlap, order, and frame data
+        (gain, pitch, and coefficients).
+
+        Notes
+        -----
+        This binary file should have been generated using
+        LpcEncoder().save_data() method
+
+        Parameters
+        ----------
+        filename : Path
+            The path to the binary file to load.
+        """
         with open(filename, "rb") as f:
             encoded_data = f.read()
 
@@ -83,6 +135,12 @@ class LpcDecoder:
             self.frame_data.append(frame_data)
 
     def decode_signal(self) -> None:
+        """
+        Decode the LPC-encoded signal using the loaded frame data and parameters.
+
+        This method applies filtering and overlap-add synthesis to reconstruct the original signal
+        from encoded frame data, gain, pitch, and coefficients.
+        """
         initial_conditions = np.zeros(self.order)
         hop_size = int(self.window_size * (1 - self.overlap/100))  # calculate overlap in samples
         total_length = len(self.frame_data) * hop_size + self.window_size
@@ -104,10 +162,21 @@ class LpcDecoder:
         self.signal = output_signal
 
     def save_audio(self, filename: Path) -> None:
+        """
+        Save the decoded signal as an audio file in .wav format.
+
+        Parameters
+        ----------
+        filename : Path
+            The path to save the audio file.
+        """
         import soundfile as sf  # lazy loader, we only load it if we need it
         logger.debug(f"Creating file '{filename}'")
         sf.write(filename, self.signal, samplerate=self.sample_rate)
 
     def play_signal(self) -> None:
+        """
+        Play the decoded audio signal through the default audio output.
+        """
         logger.debug("Playing signal")
         play_signal(self.signal, sample_rate=self.sample_rate)

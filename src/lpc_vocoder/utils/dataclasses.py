@@ -25,6 +25,19 @@ import numpy.typing as npt
 
 @dataclass
 class EncodedFrame:
+    """
+    A data class representing an encoded frame of audio, including gain, pitch,
+    and LPC coefficients.
+
+    Attributes
+    ----------
+    gain : float
+        The gain of the frame, representing the energy or amplitude.
+    pitch : float
+        The pitch of the frame in Hz.
+    coefficients : npt.NDArray
+        The linear predictive coding (LPC) coefficients for the frame.
+    """
     gain: float
     pitch: float
     coefficients: npt.NDArray
