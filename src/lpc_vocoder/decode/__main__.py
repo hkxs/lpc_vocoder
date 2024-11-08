@@ -46,12 +46,12 @@ def parse_args():
 def main():
     args = parse_args()
     logger.setLevel(level=logging.DEBUG if args.debug else logging.INFO)
-    logger.info(f"Decoding file '{args.audio_file}'")
+    logger.info(f"Decoding file '{args.audio_file.resolve()}'")
 
     decoder = LpcDecoder()
-    decoder.load_data_file(args.encoded_file)
+    decoder.load_data_file(args.encoded_file.resolve())
     decoder.decode_signal()
-    decoder.save_audio(args.audio_file)
+    decoder.save_audio(args.audio_file.resolve())
     if args.play:
         decoder.play_signal()
 

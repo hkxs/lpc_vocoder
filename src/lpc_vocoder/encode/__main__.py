@@ -32,7 +32,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.description = "Encode a .wav signal using LPC"
     parser.add_argument("audio_file", type=Path, help="Name of the input file")
-    parser.add_argument("filename", type=Path, help="Name of the output file")
+    parser.add_argument("encoded_file", type=Path, help="Name of the output file")
     parser.add_argument("--order",  type=int, default=10, help=f"Order of the LPC filter, default '{10}'")
     parser.add_argument("--frame_size", type=int, help="Frame Size, if not provided it will use a 30ms window based on the sample rate")
     parser.add_argument("--overlap", type=int, default=50, help=f"Overlap as percentage (0-100), default '{50}'")
@@ -48,11 +48,11 @@ def parse_args():
 def main():
     args = parse_args()
     logger.setLevel(level=logging.DEBUG if args.debug else logging.INFO)
-    logger.info(f"Encoding file '{args.audio_file}'")
+    logger.info(f"Encoding file '{args.audio_file.resolve()}'")
     encoder = LpcEncoder(order=args.order)
-    encoder.load_file(args.audio_file, window_size=args.frame_size, overlap=args.overlap)
+    encoder.load_file(args.audio_file.resolve(), window_size=args.frame_size, overlap=args.overlap)
     encoder.encode_signal()
-    encoder.save_data(args.filename)
+    encoder.save_data(args.encoded_file.resolve())
 
 
 if __name__ == '__main__':
