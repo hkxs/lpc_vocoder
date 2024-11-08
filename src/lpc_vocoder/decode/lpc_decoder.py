@@ -59,6 +59,10 @@ class LpcDecoder:
     """
 
     def __init__(self):
+        """
+        Creates a Decoder instance that ca be used to reconstruct the signal
+        encoded by LpcEncoder.
+        """
         self.data = []
         self.sample_rate = None
         self.window_size = None
