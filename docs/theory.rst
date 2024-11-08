@@ -9,25 +9,13 @@ the speech signal, the LPC vocoder is one of the easiest vocoders to implement.
 This is a source-filter model that represents speech signal as a combination of
 a source (vocal cords) and a linear filter (vocal tract).
 
-Sound Classification
---------------------
-
-Speech segments can be classified according to their excitation mode:
-
-* Voiced
-    This sounds are produced by the excitation of the vocal cords and
-    fundamental frequency called **pitch**, and can be represented as a train of
-    impulses with period equal to the pitch.
-
-* Unvoiced
-    This kind of sound is produced by the turbulence of the air while passing
-    through the vocal tract, and can be modeled as white noise.
-
-
-The following figure shows the difference of a voiced and unvoiced signals:
-
-.. image:: _pictures/voiced_unvoiced.jpg
-
+Speech Analysis
+---------------
+The speech signal is, by nature, random and it can only be analyzed on small
+segments (frames) of 10 to 30 ms. For this we use a *Hamming* window to split
+the signal into usable frames that will be analyzed individually and, on the
+synthesis we use the and the *Overlap and Add* method to reconstruct the signal
+from its frames.
 
 Speech Synthesis
 ----------------
@@ -93,3 +81,23 @@ with :math:`\alpha=0.9375`
 
 
 .. [#f1] All this work is based on `my bachelors project <http://132.248.9.195/ptd2014/junio/0714485/Index.html>`_
+
+
+Sound Classification
+--------------------
+
+Speech segments can be classified according to their excitation mode:
+
+* Voiced
+    This sounds are produced by the excitation of the vocal cords and
+    fundamental frequency called **pitch**, and can be represented as a train of
+    impulses with period equal to the pitch.
+
+* Unvoiced
+    This kind of sound is produced by the turbulence of the air while passing
+    through the vocal tract, and can be modeled as white noise.
+
+
+The following figure shows the difference of a voiced and unvoiced signals:
+
+.. image:: _pictures/voiced_unvoiced.jpg
