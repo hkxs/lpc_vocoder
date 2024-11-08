@@ -13,5 +13,5 @@ and the `source-filter model <https://en.wikipedia.org/wiki/Source%E2%80%93filte
    :caption: Contents:
 
    usage_info.rst
-   advance_usage.rst
+   theory.rst
    vocoder_api/index.rst
