@@ -80,9 +80,6 @@ are called pre-emphasis and de-emphasis filters and are defined as:
 with :math:`\alpha=0.9375`
 
 
-.. [#f1] All this work is based on `my bachelors project <http://132.248.9.195/ptd2014/junio/0714485/Index.html>`_
-
-
 Sound Classification
 --------------------
 
@@ -101,3 +98,6 @@ Speech segments can be classified according to their excitation mode:
 The following figure shows the difference of a voiced and unvoiced signals:
 
 .. image:: _pictures/voiced_unvoiced.jpg
+
+
+.. [#f1] All this work is based on `my bachelors project <http://132.248.9.195/ptd2014/junio/0714485/Index.html>`_
