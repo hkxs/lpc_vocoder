@@ -71,6 +71,14 @@ class LpcEncoder:
     """
 
     def __init__(self, order: int = 10):
+        """
+        Create an Encoder instance and initialize the prediction order
+
+        Parameters
+        ----------
+        order: int
+            LPC predictor order, default=10
+        """
         logger.debug(f"Encoding order: {order}")
         self._frames: npt.NDArray | Generator[np.ndarray, None, None] = np.array([0])
         self.sample_rate = 0
