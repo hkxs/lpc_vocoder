@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run code_qa" type="CompoundRunConfigurationType">
+    <toRun name="bandit" type="ShConfigurationType" />
+    <toRun name="flake8" type="ShConfigurationType" />
+    <toRun name="mypy" type="ShConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>
